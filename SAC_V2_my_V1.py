@@ -27,9 +27,6 @@ from matplotlib import animation
 import argparse
 import time
 
-
-import gym_Vibration
-
 GPU = True
 device_idx = 0
 if GPU:
@@ -41,7 +38,7 @@ print(device)
 
 parser = argparse.ArgumentParser(description='Train or test neural net motor controller.')
 parser.add_argument('--train', dest='train', action='store_true', default=True)
-parser.add_argument('--test', dest='test', action='store_true', default=False)  # True  False
+parser.add_argument('--test', dest='test', action='store_true', default=False)
 
 args = parser.parse_args()
 
@@ -111,6 +108,8 @@ class NormalizedActions(gym.ActionWrapper):
 
         return a
 
+
+
 class ValueNetwork(nn.Module):
     def __init__(self, state_dim, hidden_dim, init_w=3e-3):
         super(ValueNetwork, self).__init__()
@@ -136,31 +135,18 @@ class SoftQNetwork(nn.Module):
         super(SoftQNetwork, self).__init__()
         
         self.linear1 = nn.Linear(num_inputs + num_actions, hidden_size)
-        # self.bn1 = nn.BatchNorm1d(hidden_size)
         self.linear2 = nn.Linear(hidden_size, hidden_size)
-        # self.bn2 = nn.BatchNorm1d(hidden_size)
         self.linear3 = nn.Linear(hidden_size, hidden_size)
-        # self.bn3 = nn.BatchNorm1d(hidden_size)
         self.linear4 = nn.Linear(hidden_size, 1)
-        # self.bn4 = nn.BatchNorm1d(hidden_size)
-
+        
         self.linear4.weight.data.uniform_(-init_w, init_w)
         self.linear4.bias.data.uniform_(-init_w, init_w)
         
     def forward(self, state, action):
         x = torch.cat([state, action], 1) # the dim 0 is number of samples
-        x = self.linear1(x)
-        # x = self.bn1(x)
-        x = F.relu(x)
-
-        x = self.linear2(x)
-        # x = self.bn2(x)
-        x = F.relu(x)
-
-        x = self.linear3(x)
-        # x = self.bn3(x)
-        x = F.relu(x)
-
+        x = F.relu(self.linear1(x))
+        x = F.relu(self.linear2(x))
+        x = F.relu(self.linear3(x))
         x = self.linear4(x)
         return x
         
@@ -168,50 +154,15 @@ class SoftQNetwork(nn.Module):
 class PolicyNetwork(nn.Module):
     def __init__(self, num_inputs, num_actions, hidden_size, action_range=1., init_w=3e-3, log_std_min=-20, log_std_max=2):
         super(PolicyNetwork, self).__init__()
-
-
-         # # Example of using Sequential  
-        # model = nn.Sequential(  
-        #         nn.Conv2d(1,20,5),  
-        #         nn.ReLU(),  
-        #         nn.Conv2d(20,64,5),  
-        #         nn.ReLU()  
-        #         )  
         
-        # self.linear1 = nn.Linear(num_inputs, hidden_size)
-        # self.bn1 = nn.BatchNorm1d(hidden_size)
-        # self.linear2 = nn.Linear(hidden_size, hidden_size)
-        # self.bn2 = nn.BatchNorm1d(hidden_size)
-        # self.linear3 = nn.Linear(hidden_size, hidden_size)
-        # self.bn3 = nn.BatchNorm1d(hidden_size)
-        # self.linear4 = nn.Linear(hidden_size, hidden_size)
-        # self.bn4 = nn.BatchNorm1d(hidden_size)
-        # 
-        #        
         self.log_std_min = log_std_min
         self.log_std_max = log_std_max
-
-        self.model = nn.Sequential(
-            nn.Linear(num_inputs, hidden_size),           # 输入10维，隐层20维
-            # nn.BatchNorm1d(hidden_size, affine=True, track_running_stats=True),     # BN层，参数为隐层的个数
-            nn.LayerNorm(hidden_size, elementwise_affine=True),
-            nn.ReLU(),                     # 激活函数
-
-            nn.Linear(hidden_size, hidden_size),           # 输入10维，隐层20维
-            # nn.BatchNorm1d(hidden_size, affine=True, track_running_stats=True),     # BN层，参数为隐层的个数
-            nn.LayerNorm(hidden_size, elementwise_affine=True),
-            nn.ReLU(),   
-
-            nn.Linear(hidden_size, hidden_size),           # 输入10维，隐层20维
-            # nn.BatchNorm1d(hidden_size, affine=True, track_running_stats=True),     # BN层，参数为隐层的个数
-            nn.LayerNorm(hidden_size, elementwise_affine=True),
-            nn.ReLU(),   
-
-            nn.Linear(hidden_size, hidden_size),           # 输入10维，隐层20维
-            # nn.BatchNorm1d(hidden_size, affine=True, track_running_stats=True),     # BN层，参数为隐层的个数
-            nn.LayerNorm(hidden_size, elementwise_affine=True),
-            nn.ReLU()            
-        )
+        
+        self.linear1 = nn.Linear(num_inputs, hidden_size)
+        self.bn1 = nn.BatchNorm1d(hidden_size, affine=True, track_running_stats=True)
+        self.linear2 = nn.Linear(hidden_size, hidden_size)
+        self.linear3 = nn.Linear(hidden_size, hidden_size)
+        self.linear4 = nn.Linear(hidden_size, hidden_size)
 
         self.mean_linear = nn.Linear(hidden_size, num_actions)
         self.mean_linear.weight.data.uniform_(-init_w, init_w)
@@ -224,30 +175,21 @@ class PolicyNetwork(nn.Module):
         self.action_range = action_range
         self.num_actions = num_actions
 
+        # self.model = nn.Sequential(
+        #     nn.Linear(num_inputs, hidden_size),           # 输入10维，隐层20维
+        #     nn.BatchNorm1d(hidden_size, affine=True, track_running_stats=True),     # BN层，参数为隐层的个数
+        #     nn.relu(),                     # 激活函数
+        #     nn.Linear(20, 2),             # 输出层
+        # )
+
+
+
         
     def forward(self, state):
-        # x = F.relu(self.linear1(state))
-        # x = F.relu(self.linear2(x))
-        # x = F.relu(self.linear3(x))
-        # x = F.relu(self.linear4(x))
-
-        # x = self.linear1(state)
-        # x = self.bn1(x)
-        # x = F.relu(x)
-
-        # x = self.linear2(x)
-        # x = self.bn2(x)
-        # x = F.relu(x)
-
-        # x = self.linear3(x)
-        # x = self.bn3(x)
-        # x = F.relu(x)
-
-        # x = self.linear4(x)
-        # x = self.bn4(x)
-        # x = F.relu(x)
-
-        x = self.model(state)
+        x = F.relu(self.bn1(self.linear1(state)))
+        x = F.relu(self.linear2(x))
+        x = F.relu(self.linear3(x))
+        x = F.relu(self.linear4(x))
 
         mean    = (self.mean_linear(x))
         # mean    = F.leaky_relu(self.mean_linear(x))
@@ -311,17 +253,12 @@ class SAC_Trainer():
         self.soft_q_net2 = SoftQNetwork(state_dim, action_dim, hidden_dim).to(device)
         self.target_soft_q_net1 = SoftQNetwork(state_dim, action_dim, hidden_dim).to(device)
         self.target_soft_q_net2 = SoftQNetwork(state_dim, action_dim, hidden_dim).to(device)
-        self.policy_net = PolicyNetwork(state_dim, action_dim, hidden_dim, action_range).to(device)        
+        self.policy_net = PolicyNetwork(state_dim, action_dim, hidden_dim, action_range).to(device)
         self.log_alpha = torch.zeros(1, dtype=torch.float32, requires_grad=True, device=device)
         print('Soft Q Network (1,2): ', self.soft_q_net1)
         print('Policy Network: ', self.policy_net)
 
-        # self.soft_q_net1.eval()
-        # self.soft_q_net2.eval()
-        # self.target_soft_q_net1().eval()
-        # self.target_soft_q_net2().eval()
-        # self.policy_net.eval()
-
+        self.policy_net.eval()
 
         for target_param, param in zip(self.target_soft_q_net1.parameters(), self.soft_q_net1.parameters()):
             target_param.data.copy_(param.data)
@@ -344,7 +281,7 @@ class SAC_Trainer():
     def update(self, batch_size, reward_scale=10., auto_entropy=True, target_entropy=-2, gamma=0.99,soft_tau=1e-2):
         state, action, reward, next_state, done = self.replay_buffer.sample(batch_size)
         # print('sample:', state, action,  reward, done)
-
+        # self.policy_net.train()  # taomo
         state      = torch.FloatTensor(state).to(device)
         next_state = torch.FloatTensor(next_state).to(device)
         action     = torch.FloatTensor(action).to(device)
@@ -425,14 +362,13 @@ def plot(rewards):
     # clear_output(True)
     plt.figure(figsize=(20,5))
     plt.plot(rewards)
-    # plt.savefig('sac_v2.png')
-    plt.show()
+    plt.savefig('sac_v2.png')
+    # plt.show()
 
 
 replay_buffer_size = 1e6
 replay_buffer = ReplayBuffer(replay_buffer_size)
 
-'''
 # choose env
 ENV = ['Pendulum', 'Reacher'][0]
 if ENV == 'Reacher':
@@ -456,17 +392,11 @@ elif ENV == 'Pendulum':
     action_dim = env.action_space.shape[0]
     state_dim  = env.observation_space.shape[0]
     action_range=1.
-'''
-ENV = ['Pendulum', 'Reacher'][0]
-env = NormalizedActions(gym.make("VibrationEnv-v0"))  # VibrationEnv  Pendulum
-action_dim = env.action_space.shape[0]
-state_dim  = env.observation_space.shape[0]
-action_range=1.
+
 
 # hyper-parameters for RL training
-max_episodes  = 5000
-# max_steps   = 20 if ENV ==  'Reacher' else 150  # Pendulum needs 150 steps per episode to learn well, cannot handle 20
-max_steps = 500
+max_episodes  = 1000
+max_steps   = 20 if ENV ==  'Reacher' else 150  # Pendulum needs 150 steps per episode to learn well, cannot handle 20
 frame_idx   = 0
 batch_size  = 256
 explore_steps = 200  # for random action sampling in the beginning of training
@@ -479,18 +409,14 @@ model_path = './model/sac_v2'
 
 sac_trainer=SAC_Trainer(replay_buffer, hidden_dim=hidden_dim, action_range=action_range  )
 
-from torch.utils.tensorboard import SummaryWriter
-writer = SummaryWriter()
-
 if __name__ == '__main__':
     if args.train:
         # training loop
-
-        
-        i = 0
         for eps in range(max_episodes):
-    
-            state =  env.reset()
+            if ENV == 'Reacher':
+                state = env.reset(SCREEN_SHOT)
+            elif ENV == 'Pendulum':
+                state =  env.reset()
             episode_reward = 0
             
             
@@ -499,22 +425,18 @@ if __name__ == '__main__':
                     action = sac_trainer.policy_net.get_action(state, deterministic = DETERMINISTIC)
                 else:
                     action = sac_trainer.policy_net.sample_action()
-
-                next_state, reward, done, info = env.step(action)
-                # env.render()       
+                if ENV ==  'Reacher':
+                    next_state, reward, done, _ = env.step(action, SPARSE_REWARD, SCREEN_SHOT)
+                elif ENV ==  'Pendulum':
+                    next_state, reward, done, _ = env.step(action)
+                    # env.render()       
                     
                 replay_buffer.push(state, action, reward, next_state, done)
                 
                 state = next_state
                 episode_reward += reward
                 frame_idx += 1
-
-
-                i += 1
-                writer.add_scalar('Rewards/NoiseAmplitude', info['NoiseAmplitude'], frame_idx)
-                writer.add_scalar('Rewards/VibrationAmplitude', info['VibrationAmplitude'], frame_idx)
-                writer.add_scalar('Rewards/input', info['input'], frame_idx)
-
+                
                 
                 if len(replay_buffer) > batch_size:
                     for i in range(update_itr):
@@ -524,16 +446,9 @@ if __name__ == '__main__':
                     break
 
             if eps % 20 == 0 and eps>0: # plot and model saving interval
-                # plot(rewards)
+                plot(rewards)
                 sac_trainer.save_model(model_path)
-            # print('Episode: ', eps, '| Episode Reward: ', episode_reward)
-
-            print("Ep_i {}, the eps is {}, the t is {}, NoiseAmplitude: {}, VibrationAmplitude: {}, input: {}"\
-                .format(i, eps, max_steps, info['NoiseAmplitude'], info['VibrationAmplitude'], info['input'] ))
-           
-            writer.add_scalar('Rewards/ep_r', episode_reward, global_step=eps)
-
-
+            print('Episode: ', eps, '| Episode Reward: ', episode_reward)
             rewards.append(episode_reward)
         sac_trainer.save_model(model_path)
 
