@@ -528,8 +528,8 @@ if __name__ == '__main__':
                 sac_trainer.save_model(model_path)
             # print('Episode: ', eps, '| Episode Reward: ', episode_reward)
 
-            print("Ep_i {}, the eps is {}, the t is {}, NoiseAmplitude: {}, VibrationAmplitude: {}, input: {}"\
-                .format(i, eps, max_steps, info['NoiseAmplitude'], info['VibrationAmplitude'], info['input'] ))
+            print("the eps is {}, the t is {}, Episode Reward {}, NoiseAmplitude: {}, VibrationAmplitude: {}, input: {}"\
+                .format(eps, max_steps, episode_reward, info['NoiseAmplitude'], info['VibrationAmplitude'], info['input'] ))
            
             writer.add_scalar('Rewards/ep_r', episode_reward, global_step=eps)
 
