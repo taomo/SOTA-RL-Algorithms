@@ -136,16 +136,6 @@ class SoftQNetwork(nn.Module):
     def __init__(self, num_inputs, num_actions, hidden_size, init_w=3e-3):
         super(SoftQNetwork, self).__init__()
         
-        # self.linear1 = nn.Linear(num_inputs + num_actions, hidden_size)
-        # # self.bn1 = nn.BatchNorm1d(hidden_size)
-        # self.linear2 = nn.Linear(hidden_size, hidden_size)
-        # # self.bn2 = nn.BatchNorm1d(hidden_size)
-        # self.linear3 = nn.Linear(hidden_size, hidden_size)
-        # # self.bn3 = nn.BatchNorm1d(hidden_size)
-        # self.linear4 = nn.Linear(hidden_size, 1)
-        # # self.bn4 = nn.BatchNorm1d(hidden_size)
-
-
 
         self.model = nn.Sequential(
                     nn.Linear(num_inputs, hidden_size),           # 输入10维，隐层20维
@@ -201,7 +191,7 @@ class SoftQNetwork(nn.Module):
         
 
 ENV = ['Pendulum', 'Reacher'][0]
-env = NormalizedActions(gym.make("Pendulum-v0"))  # VibrationEnv  Pendulum
+env = NormalizedActions(gym.make("VibrationEnv-v0"))  # VibrationEnv  Pendulum
 action_dim = env.action_space.shape[0]
 state_dim  = env.observation_space.shape[0]
 
@@ -229,50 +219,14 @@ class PolicyNetwork(nn.Module):
         #         nn.Conv2d(20,64,5),  
         #         nn.ReLU()  
         #         )  
-        
-        # self.linear1 = nn.Linear(num_inputs, hidden_size)
-        # self.bn1 = nn.BatchNorm1d(hidden_size)
-        # self.linear2 = nn.Linear(hidden_size, hidden_size)
-        # self.bn2 = nn.BatchNorm1d(hidden_size)
-        # self.linear3 = nn.Linear(hidden_size, hidden_size)
-        # self.bn3 = nn.BatchNorm1d(hidden_size)
-        # self.linear4 = nn.Linear(hidden_size, hidden_size)
-        # self.bn4 = nn.BatchNorm1d(hidden_size)
-        # 
-        #        
+       
         self.log_std_min = log_std_min
         self.log_std_max = log_std_max
 
         self.num_inputs = num_inputs  
         # self.output_dim = num_actions 
         # self.hidden_dim = hidden_size  
-
-        # self.model = nn.Sequential(
-        #     # nn.Linear(num_inputs, hidden_size),           # 输入10维，隐层20维
-        #     # # nn.BatchNorm1d(hidden_size, affine=True, track_running_stats=True),     # BN层，参数为隐层的个数
-        #     # nn.LayerNorm(hidden_size, elementwise_affine=True),
-        #     # nn.ReLU(),                     # 激活函数
-
-        #     # nn.Linear(hidden_size, hidden_size),           # 输入10维，隐层20维
-        #     # # nn.BatchNorm1d(hidden_size, affine=True, track_running_stats=True),     # BN层，参数为隐层的个数
-        #     # nn.LayerNorm(hidden_size, elementwise_affine=True),
-        #     # nn.ReLU(),   
-
-        #     # nn.Linear(hidden_size, hidden_size),           # 输入10维，隐层20维
-        #     # # nn.BatchNorm1d(hidden_size, affine=True, track_running_stats=True),     # BN层，参数为隐层的个数
-        #     # nn.LayerNorm(hidden_size, elementwise_affine=True),
-        #     # nn.ReLU(),   
-
-        #     # nn.Linear(hidden_size, hidden_size),           # 输入10维，隐层20维
-        #     # # nn.BatchNorm1d(hidden_size, affine=True, track_running_stats=True),     # BN层，参数为隐层的个数
-        #     # nn.LayerNorm(hidden_size, elementwise_affine=True),
-        #     # nn.ReLU()           
-        #     nn.LSTMCell(num_inputs, hidden_size),
-        #     nn.LSTMCell(hidden_size, hidden_size),
-        #     nn.LSTMCell(hidden_size, hidden_size),
-        #     nn.Linear(hidden_size, hidden_size)
-        # )
-
+      
         # self.bn1 = nn.BatchNorm1d(state_dim)
         self.tcn = TemporalConvNet(input_channels, num_channels, kernel_size=kernel_size, dropout=dropout)
         # self.fc1 = nn.Linear(num_channels[-1], hidden_size)
@@ -284,21 +238,13 @@ class PolicyNetwork(nn.Module):
                     nn.LayerNorm(hidden_size, elementwise_affine=True),
                     nn.ReLU(),                     # 激活函数
 
-                    nn.Linear(hidden_size, hidden_size),           # 输入10维，隐层20维
-                    # nn.BatchNorm1d(hidden_size, affine=True, track_running_stats=True),     # BN层，参数为隐层的个数
-                    nn.LayerNorm(hidden_size, elementwise_affine=True),
-                    nn.ReLU(),   
-
                     # nn.Linear(hidden_size, hidden_size),           # 输入10维，隐层20维
                     # # nn.BatchNorm1d(hidden_size, affine=True, track_running_stats=True),     # BN层，参数为隐层的个数
                     # nn.LayerNorm(hidden_size, elementwise_affine=True),
                     # nn.ReLU(),   
-
-                    # nn.Linear(hidden_size, hidden_size),           # 输入10维，隐层20维
-                    # # nn.BatchNorm1d(hidden_size, affine=True, track_running_stats=True),     # BN层，参数为隐层的个数
-                    # nn.LayerNorm(hidden_size, elementwise_affine=True),
-                    # nn.ReLU()            
+         
                 )
+
 
         self.mean_linear = nn.Linear(hidden_size, num_actions)
         self.mean_linear.weight.data.uniform_(-init_w, init_w)
@@ -313,35 +259,13 @@ class PolicyNetwork(nn.Module):
 
         
     def forward(self, state):
-        # x = F.relu(self.linear1(state))
-        # x = F.relu(self.linear2(x))
-        # x = F.relu(self.linear3(x))
-        # x = F.relu(self.linear4(x))
-
-        # x = self.linear1(state)
-        # x = self.bn1(x)
-        # x = F.relu(x)
-
-        # x = self.linear2(x)
-        # x = self.bn2(x)
-        # x = F.relu(x)
-
-        # x = self.linear3(x)
-        # x = self.bn3(x)
-        # x = F.relu(x)
-
-        # x = self.linear4(x)
-        # x = self.bn4(x)
-        # x = F.relu(x)
+       
         state = state.reshape(-1, input_channels, state_seq_len)
         x = self.tcn(state)
-        x = x.transpose(1, 2)
-        x = x.squeeze(1)
+        x = x[:, :, -1]
         x = self.model(x)
-        # print(x.shape)
-        # input()
 
-        mean    = (self.mean_linear(x))
+        mean = (self.mean_linear(x))
         # mean    = F.leaky_relu(self.mean_linear(x))
         log_std = self.log_std_linear(x)
         log_std = torch.clamp(log_std, self.log_std_min, self.log_std_max)
@@ -600,9 +524,9 @@ if __name__ == '__main__':
 
 
 
-                # writer.add_scalar('Rewards/NoiseAmplitude', info['NoiseAmplitude'], frame_idx)
-                # writer.add_scalar('Rewards/VibrationAmplitude', info['VibrationAmplitude'], frame_idx)
-                # writer.add_scalar('Rewards/input', info['input'], frame_idx)
+                writer.add_scalar('Rewards/NoiseAmplitude', info['NoiseAmplitude'], frame_idx)
+                writer.add_scalar('Rewards/VibrationAmplitude', info['VibrationAmplitude'], frame_idx)
+                writer.add_scalar('Rewards/input', info['input'], frame_idx)
 
                 
                 if len(replay_buffer) > batch_size:
@@ -615,12 +539,11 @@ if __name__ == '__main__':
             if eps % 20 == 0 and eps>0: # plot and model saving interval
                 # plot(rewards)
                 sac_trainer.save_model(model_path)
-            print('Episode: ', eps, '| Episode Reward: ', episode_reward)
+            # print('Episode: ', eps, '| Episode Reward: ', episode_reward)
 
-            # print("the eps is {}, the t is {}, Episode Reward {}, NoiseAmplitude: {}, VibrationAmplitude: {}, input: {}"\
-            #     .format(eps, max_steps, episode_reward, info['NoiseAmplitude'], info['VibrationAmplitude'], info['input'] ))
-           
-            # writer.add_scalar('Rewards/ep_r', episode_reward, global_step=eps)
+            print("the eps is {}, the t is {}, Episode Reward {}, NoiseAmplitude: {}, VibrationAmplitude: {}, input: {}"\
+                .format(eps, max_steps, episode_reward, info['NoiseAmplitude'], info['VibrationAmplitude'], info['input'] ))           
+            writer.add_scalar('Rewards/ep_r', episode_reward, global_step=eps)
 
 
             rewards.append(episode_reward)
