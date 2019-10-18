@@ -631,7 +631,7 @@ if __name__ == '__main__':
                 
                 if len(replay_buffer) > batch_size:
                     for i in range(update_itr):
-                        _=sac_trainer.update(batch_size, reward_scale=10., auto_entropy=AUTO_ENTROPY, target_entropy=-1.*action_dim)
+                        _=sac_trainer.update(batch_size, reward_scale=1e-1, auto_entropy=AUTO_ENTROPY, target_entropy=-1.*action_dim)
 
                 if done:
                     break

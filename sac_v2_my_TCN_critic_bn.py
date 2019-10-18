@@ -30,12 +30,13 @@ import time
 
 import gym_Vibration
 
-GPU = True
-device_idx = 0
-if GPU:
-    device = torch.device("cuda:" + str(device_idx) if torch.cuda.is_available() else "cpu")
-else:
-    device = torch.device("cpu")
+# GPU = True
+# device_idx = 0
+# if GPU:
+#     device = torch.device("cuda:" + str(device_idx) if torch.cuda.is_available() else "cpu")
+# else:
+#     device = torch.device("cpu")
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
 print(device)
 
 
@@ -606,7 +607,7 @@ if __name__ == '__main__':
                 
                 if len(replay_buffer) > batch_size:
                     for i in range(update_itr):
-                        _=sac_trainer.update(batch_size, reward_scale=10., auto_entropy=AUTO_ENTROPY, target_entropy=-1.*action_dim)
+                        _=sac_trainer.update(batch_size, reward_scale=1e-1, auto_entropy=AUTO_ENTROPY, target_entropy=-1.*action_dim)
 
                 if done:
                     break
