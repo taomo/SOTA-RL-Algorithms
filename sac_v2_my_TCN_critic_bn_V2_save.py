@@ -425,11 +425,12 @@ class SAC_Trainer():
 
     def save_model(self, path, ep):
 
-        epoch, frame_idx = ep
+        epoch, frame_idx, rewards = ep
 
         #保存模型的状态，可以设置一些参数，后续可以使用
         state = {'epoch': epoch + 1,#保存的当前轮数
                 'frame_idx': frame_idx + 1,#保存的当前轮数
+                'rewards': rewards,
                 'soft_q_net1': self.soft_q_net1.state_dict(),#训练好的参数
                 'soft_q_net2': self.soft_q_net2.state_dict(),#训练好的参数
                 'policy_net': self.policy_net.state_dict(),#训练好的参数
@@ -462,6 +463,7 @@ class SAC_Trainer():
 
         self.epoch = checkpoint['epoch']
         self.frame_idx = checkpoint['frame_idx']
+        self.rewards = checkpoint['rewards']
 
         if args.test:
             self.soft_q_net1.eval()
@@ -631,14 +633,17 @@ if __name__ == '__main__':
 
     if args.go_on_train:
         
-        if True:  # False 
+        import os
+        is_go_on = os.path.exists('./model_save/sac_v2_checkpoint.pth.tar')        
+
+        if is_go_on:  # False 
             sac_trainer.load_model(model_path)
             eps = sac_trainer.epoch
             frame_idx = sac_trainer.frame_idx
-
- 
-        # eps = 0
-        # frame_idx = 0
+            rewards = sac_trainer.rewards
+        else: 
+            eps = 0
+            frame_idx = 0
 
         print(eps,frame_idx)
         # input()
@@ -679,9 +684,9 @@ if __name__ == '__main__':
                 if done:
                     break
 
-            if eps % 1 == 0 and eps>0: # plot and model saving interval
-                # plot(rewards)
-                sac_trainer.save_model(model_path, [eps, frame_idx] )
+            if eps % 20 == 0 and eps>0: # plot and model saving interval
+                plot(rewards)
+                sac_trainer.save_model(model_path, [eps, frame_idx, rewards] )
             print('Episode: ', eps, '| Episode Reward: ', episode_reward)
 
             # print("the eps is {}, the t is {}, Episode Reward {}, NoiseAmplitude: {}, VibrationAmplitude: {}, input: {}"\
