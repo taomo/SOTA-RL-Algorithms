@@ -44,6 +44,7 @@ parser = argparse.ArgumentParser(description='Train or test neural net motor con
 parser.add_argument('--train', dest='train', action='store_true', default=False)
 parser.add_argument('--test', dest='test', action='store_true', default=False)  # True  False
 parser.add_argument('--go_on_train', dest='go_on_train', action='store_true', default=True)  # True  False
+parser.add_argument("--env_name", default="VibrationEnv-v0")  # OpenAI gym environment name  VibrationEnv  Pendulum
 
 args = parser.parse_args()
 
@@ -192,7 +193,9 @@ class SoftQNetwork(nn.Module):
         
 
 ENV = ['Pendulum', 'Reacher'][0]
-env = NormalizedActions(gym.make("Pendulum-v0"))  # VibrationEnv  Pendulum
+
+# end_id = "Pendulum-v0"
+env = NormalizedActions(gym.make(args.env_name))  # VibrationEnv  Pendulum
 action_dim = env.action_space.shape[0]
 state_dim  = env.observation_space.shape[0]
 
@@ -436,7 +439,8 @@ class SAC_Trainer():
                 'policy_net': self.policy_net.state_dict(),#训练好的参数
                 'soft_q_net1_optimizer': self.soft_q_optimizer1.state_dict(),#优化器参数,为了后续的resume
                 'soft_q_net2_optimizer': self.soft_q_optimizer2.state_dict(),#优化器参数,为了后续的resume
-                'policy_optimizer': self.policy_optimizer.state_dict(),#优化器参数,为了后续的resume
+                'policy_optimizer': self.policy_optimizer.state_dict(),#优化器参数,为了后续的resume                
+                'alpha_optimizer':self.alpha_optimizer.state_dict(),#优化器参数,为了后续的resume
                 # 'loss': best_pred#当前最好的精度
 
                 }
@@ -460,6 +464,8 @@ class SAC_Trainer():
         self.soft_q_optimizer1.load_state_dict(checkpoint['soft_q_net1_optimizer'])
         self.soft_q_optimizer2.load_state_dict(checkpoint['soft_q_net2_optimizer'])
         self.policy_optimizer.load_state_dict(checkpoint['policy_optimizer'])
+
+        self.alpha_optimizer.load_state_dict(checkpoint['alpha_optimizer'])
 
         self.epoch = checkpoint['epoch']
         self.frame_idx = checkpoint['frame_idx']
@@ -542,11 +548,12 @@ DETERMINISTIC=False
 hidden_dim = 512
 rewards     = []
 model_path = './model_save/sac_v2_'
+tensorboard_path = './model_save/'
 
 sac_trainer=SAC_Trainer(replay_buffer, hidden_dim=hidden_dim, action_range=action_range  )
 
 from torch.utils.tensorboard import SummaryWriter
-writer = SummaryWriter()
+writer = SummaryWriter(tensorboard_path)
 
 if __name__ == '__main__':
     if args.train:
@@ -671,10 +678,26 @@ if __name__ == '__main__':
                 frame_idx += 1
 
 
+                if args.env_name == 'VibrationEnv-v0':
+                    writer.add_scalar('Rewards/NoiseAmplitude', info['NoiseAmplitude'], frame_idx)
+                    writer.add_scalar('Rewards/VibrationAmplitude', info['VibrationAmplitude'], frame_idx)
+                    writer.add_scalar('Rewards/input', info['input'], frame_idx)
 
-                # writer.add_scalar('Rewards/NoiseAmplitude', info['NoiseAmplitude'], frame_idx)
-                # writer.add_scalar('Rewards/VibrationAmplitude', info['VibrationAmplitude'], frame_idx)
-                # writer.add_scalar('Rewards/input', info['input'], frame_idx)
+                    writer.add_scalars('states', {'x1_position':state[0],
+                                                  'x2_position':state[1],
+                                                  'x3_velocity':state[2],
+                                                  'x4_velocity':state[3],
+                                                  'x5_Acceleration':state[4],
+                                                  'x6_Acceleration':state[5]
+                                                  }, frame_idx)
+
+                    writer.add_scalars('states', {'x1_position':state[0],
+                                                  'x2_position':state[1] }, frame_idx)
+                    writer.add_scalars('states', {'x3_velocity':state[2],
+                                                  'x4_velocity':state[3] }, frame_idx)
+                    writer.add_scalars('states', {'x5_Acceleration':state[4],
+                                                  'x6_Acceleration':state[5] }, frame_idx)        
+                    pass  
 
                 
                 if len(replay_buffer) > batch_size:
@@ -684,21 +707,23 @@ if __name__ == '__main__':
                 if done:
                     break
 
-            if eps % 20 == 0 and eps>0: # plot and model saving interval
-                plot(rewards)
+            if eps % 5 == 0 and eps>0: # plot and model saving interval
+                # plot(rewards)
                 sac_trainer.save_model(model_path, [eps, frame_idx, rewards] )
-            print('Episode: ', eps, '| Episode Reward: ', episode_reward)
 
-            # print("the eps is {}, the t is {}, Episode Reward {}, NoiseAmplitude: {}, VibrationAmplitude: {}, input: {}"\
-            #     .format(eps, max_steps, episode_reward, info['NoiseAmplitude'], info['VibrationAmplitude'], info['input'] ))           
-            # writer.add_scalar('Rewards/ep_r', episode_reward, global_step=eps)
+            
+            if args.env_name == 'VibrationEnv-v0':
+                print("the eps is {}, the t is {}, Episode Reward {}, NoiseAmplitude: {}, VibrationAmplitude: {}, input: {}"\
+                    .format(eps, max_steps, episode_reward, info['NoiseAmplitude'], info['VibrationAmplitude'], info['input'] ))           
+            else:
+                print('Episode: ', eps, '| Episode Reward: ', episode_reward)
+
+            writer.add_scalar('Rewards/ep_r', episode_reward, global_step=eps)
 
             rewards.append(episode_reward)
 
             eps += 1
 
-            # if eps > max_episodes:
-            #     break
-
+   
         sac_trainer.save_model(model_path, [eps, frame_idx] )
 
