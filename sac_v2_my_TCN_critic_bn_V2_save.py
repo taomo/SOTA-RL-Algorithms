@@ -500,7 +500,7 @@ def plot(rewards):
     # clear_output(True)
     plt.figure(figsize=(20,5))
     plt.plot(rewards)
-    # plt.savefig('sac_v2.png')
+    plt.savefig('sac_v2.png')
     plt.show()
 
 
@@ -610,7 +610,18 @@ if __name__ == '__main__':
         sac_trainer.save_model(model_path, [eps, frame_idx] )
 
     if args.test:
+
+        # import os
+        # is_go_on = os.path.exists('./model_save/sac_v2_checkpoint.pth.tar')        
+       
         sac_trainer.load_model(model_path)
+
+        # eps = sac_trainer.epoch
+        # frame_idx = sac_trainer.frame_idx
+        # rewards = sac_trainer.rewards
+
+        env_id = 'VibrationEnv-v0'
+        
         for eps in range(10):
             # if ENV == 'Reacher':
             #     state = env.reset(SCREEN_SHOT)
@@ -618,9 +629,16 @@ if __name__ == '__main__':
             #     state =  env.reset()
             # episode_reward = 0
 
+            eval_states = []
+            episodes =[]
+
+            eval_BottomLayerForce = []
+            eval_BottomLayerForceRate = []
+
+
             state =  env.reset()
             episode_reward = 0
-            for step in range(max_steps):
+            for step in range(int(0.5*2*max_steps)):   #max_steps
                 action = sac_trainer.policy_net.get_action(state, deterministic = DETERMINISTIC)
                 # if ENV ==  'Reacher':
                 #     next_state, reward, done, _ = env.step(action, SPARSE_REWARD, SCREEN_SHOT)
@@ -629,13 +647,131 @@ if __name__ == '__main__':
                 #     env.render()   
 
 
-                next_state, reward, done, _ = env.step(action)
-                env.render()   
+                next_state, reward, done, info = env.step(action)
+                # env.render()   
 
                 episode_reward += reward
                 state=next_state
 
-            print('Episode: ', eps, '| Episode Reward: ', episode_reward)
+                episodes.append(env.counts)
+                eval_states.append(state)
+
+                eval_BottomLayerForce.append(info['BottomLayerForce'])
+                eval_BottomLayerForceRate.append(info['BottomLayerForceRate'])
+        
+
+            # print('Episode: ', eps, '| Episode Reward: ', episode_reward)
+
+
+            print("the eps is {}, the t is {}, Episode Reward {}, NoiseAmplitude: {}, VibrationAmplitude: {}, input: {},\
+                 BottomLayerForceRate: {}"  \
+                .format(eps, max_steps, episode_reward, info['NoiseAmplitude'], info['VibrationAmplitude'], info['input'],\
+                 info['BottomLayerForceRate']  \
+                     ))           
+
+           
+            episodes = np.array(episodes)
+            eval_states = np.array(eval_states)
+
+            eval_BottomLayerForce = np.array(eval_BottomLayerForce)
+            eval_BottomLayerForceRate = np.array(eval_BottomLayerForceRate)
+
+            # from matplotlib import pylab
+            # plt = pylab
+            fig = plt.figure("VibrationEnv-states")
+            plt.subplot(221)
+            # legends = [r'$x_1(t)$', r'$x_2(t)$', r'$x_3(t)$', r'$x_4(t)$', r'$x1cc(t)$', r'$x2cc(t)$']
+            legends = [r'$x_1(t)$', r'$x_2(t)$', r'$x_3(t)$', r'$x_4(t)$', r'$x_5(t)$', r'$x_6(t)$']
+            # fig = plt.figure("VibrationEnv-states")
+            # plt.plot(episodes, eval_states[:,:2])
+            plt.plot(episodes, eval_states[:,:6])
+            plt.title("%s"%env_id)
+            plt.xlabel("Episode")
+            plt.ylabel("eval_states")
+            plt.legend(legends)
+            # plt.show()
+            plt.grid()
+
+            plt.subplot(222)
+            legends = [r'$x_1(t)$', r'$x_2(t)$']
+            # fig = plt.figure("VibrationEnv-states")
+            # plt.plot(episodes, eval_states[:,:2])
+            plt.plot(episodes, eval_states[:,:2])
+            plt.title("%s"%env_id)
+            plt.xlabel("Episode")
+            plt.ylabel("eval_states")
+            plt.legend(legends)
+            # plt.show()
+            plt.grid()
+
+            plt.subplot(223)
+            legends = [r'$x_3(t)$', r'$x_4(t)$']
+            # fig = plt.figure("VibrationEnv-states")
+            # plt.plot(episodes, eval_states[:,:2])
+            plt.plot(episodes, eval_states[:,2:4])
+            plt.title("%s"%env_id)
+            plt.xlabel("Episode")
+            plt.ylabel("eval_states")
+            plt.legend(legends)
+            # plt.show()
+            plt.grid()
+
+
+            plt.subplot(224)
+            legends = [r'$x_5(t)$', r'$x_6(t)$']
+            # fig = plt.figure("VibrationEnv-states")
+            # plt.plot(episodes, eval_states[:,:2])
+            plt.plot(episodes, eval_states[:,4:6])
+            plt.title("%s"%env_id)
+            plt.xlabel("Episode")
+            plt.ylabel("eval_states")
+            plt.legend(legends)
+
+            plt.grid()
+            # plt.savefig('predict%d.pdf'%i)
+            # plt.savefig('./output/predict{}.pdf'.format(eps+1))
+            # plt.close()
+            # # pylab.get_current_fig_manager().window.showMaximized()
+            # pylab.get_current_fig_manager().showMaximized()
+            # # pylab.get_current_fig_manager
+
+            wm = plt.get_current_fig_manager()
+            wm.window.state('zoomed')
+            # plt.show()
+
+            # plt.savefig('./output/predict{}.pdf'.format(eps+1))
+            # plt.close()
+
+            plt.show()
+
+
+            fig = plt.figure("VibrationEnv-states")
+            plt.subplot(121)
+            legends = [r'$x_7(t)$']
+            plt.plot(episodes, eval_BottomLayerForce)
+            # plt.plot(episodes, eval_BottomLayerForceRate)
+            plt.title("%s"%env_id)
+            plt.xlabel("Episode")
+            plt.ylabel("eval_states")
+            plt.legend(legends)
+            plt.grid()
+
+            plt.subplot(122)
+            legends = [r'$x_8(t)$']
+            # plt.plot(episodes, eval_BottomLayerForce)
+            plt.plot(episodes, eval_BottomLayerForceRate)
+            plt.title("%s"%env_id)
+            plt.xlabel("Episode")
+            plt.ylabel("eval_states")
+            plt.legend(legends)
+            plt.grid()
+
+            wm = plt.get_current_fig_manager()
+            wm.window.state('zoomed')
+
+            plt.show()
+
+        env.close()
 
 
     if args.go_on_train:
@@ -652,7 +788,8 @@ if __name__ == '__main__':
             eps = 0
             frame_idx = 0
 
-        print(eps,frame_idx)
+        # print(eps,frame_idx)
+        print('eps: {}, frame_idx:{}'.format(eps,frame_idx))
         # input()
         # for eps in range(max_episodes):     
 
