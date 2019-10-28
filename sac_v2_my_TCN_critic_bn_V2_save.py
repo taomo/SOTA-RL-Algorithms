@@ -42,8 +42,8 @@ print(device)
 
 parser = argparse.ArgumentParser(description='Train or test neural net motor controller.')
 parser.add_argument('--train', dest='train', action='store_true', default=False)
-parser.add_argument('--test', dest='test', action='store_true', default=False)  # True  False
-parser.add_argument('--go_on_train', dest='go_on_train', action='store_true', default=True)  # True  False
+parser.add_argument('--test', dest='test', action='store_true', default=True)  # True  False
+parser.add_argument('--go_on_train', dest='go_on_train', action='store_true', default=False)  # True  False
 parser.add_argument("--env_name", default="VibrationEnv-v0")  # OpenAI gym environment name  VibrationEnv  Pendulum
 
 args = parser.parse_args()
@@ -548,6 +548,9 @@ DETERMINISTIC=False
 hidden_dim = 512
 rewards     = []
 model_path = './model_save/sac_v2_'
+# eps = 0
+# model_path = './model_save/sac_v2_eps_{}_'.format(eps)
+
 tensorboard_path = './model_save/'
 
 sac_trainer=SAC_Trainer(replay_buffer, hidden_dim=hidden_dim, action_range=action_range  )
@@ -635,6 +638,8 @@ if __name__ == '__main__':
             eval_BottomLayerForce = []
             eval_BottomLayerForceRate = []
 
+            eval_input = []
+
 
             state =  env.reset()
             episode_reward = 0
@@ -658,6 +663,8 @@ if __name__ == '__main__':
 
                 eval_BottomLayerForce.append(info['BottomLayerForce'])
                 eval_BottomLayerForceRate.append(info['BottomLayerForceRate'])
+
+                eval_input.append(info['input'])
         
 
             # print('Episode: ', eps, '| Episode Reward: ', episode_reward)
@@ -675,6 +682,8 @@ if __name__ == '__main__':
 
             eval_BottomLayerForce = np.array(eval_BottomLayerForce)
             eval_BottomLayerForceRate = np.array(eval_BottomLayerForceRate)
+
+            eval_input = np.array(eval_input)
 
             # from matplotlib import pylab
             # plt = pylab
@@ -771,6 +780,24 @@ if __name__ == '__main__':
 
             plt.show()
 
+
+            fig = plt.figure("VibrationEnv-input")
+            # plt.subplot(121)
+            legends = [r'$u(t)$', r'$f(t)$', r'$x_8(t)$']
+            plt.plot(episodes, eval_input)
+            # plt.plot(episodes, eval_BottomLayerForceRate)
+            plt.title("%s"%env_id)
+            plt.xlabel("Episode")
+            plt.ylabel("input")
+            plt.legend(legends)
+            plt.grid()
+
+            wm = plt.get_current_fig_manager()
+            wm.window.state('zoomed')
+
+            plt.show()
+
+
         env.close()
 
 
@@ -846,6 +873,7 @@ if __name__ == '__main__':
 
             if eps % 5 == 0 and eps>0: # plot and model saving interval
                 # plot(rewards)
+                # model_path = './model_save/sac_v2_eps_{}_'.format(eps)
                 sac_trainer.save_model(model_path, [eps, frame_idx, rewards] )
 
             
