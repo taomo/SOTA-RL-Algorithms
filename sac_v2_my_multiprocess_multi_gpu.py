@@ -541,6 +541,100 @@ def worker(id, sac_trainer, ENV, rewards_queue, replay_buffer, max_episodes, max
         sac_trainer.save_model(model_path)
 
 
+class Worker(mp.Process):
+    def __init__(self, id, sac_trainer, ENV, rewards_queue, replay_buffer, max_episodes, max_steps, batch_size,
+           explore_steps, \
+           update_itr, action_itr, AUTO_ENTROPY, DETERMINISTIC, hidden_dim, model_path):
+        super(Worker, self).__init__()
+
+    def run(self):
+
+        with torch.cuda.device(id % torch.cuda.device_count()):
+            sac_trainer.to_cuda()
+
+            print(sac_trainer, replay_buffer)  # sac_tainer are not the same, but all networks and optimizers in it are the same; replay  buffer is the same one.
+            if ENV == 'Reacher':
+                # NUM_JOINTS=2
+                # LINK_LENGTH=[200, 140]
+                # INI_JOING_ANGLES=[0.1, 0.1]
+
+                # SCREEN_SIZE=1000
+                # SPARSE_REWARD=False
+                # SCREEN_SHOT=False
+                # action_range = 10.0
+
+                # env=Reacher(screen_size=SCREEN_SIZE, num_joints=NUM_JOINTS, link_lengths = LINK_LENGTH, \
+                # ini_joint_angles=INI_JOING_ANGLES, target_pos = [369,430], render=True, change_goal=False)
+                # action_dim = env.num_actions
+                # state_dim  = env.num_observations
+                pass
+
+            elif ENV == 'Pendulum':
+                env = NormalizedActions(gym.make("Pendulum-v0"))
+                action_dim = env.action_space.shape[0]
+                state_dim  = env.observation_space.shape[0]
+                action_range=1.
+            
+            frame_idx=0
+            rewards=[]
+            # training loop
+            for eps in range(max_episodes):
+                episode_reward = 0
+                if ENV == 'Reacher':
+                    state = env.reset(SCREEN_SHOT)
+                elif ENV == 'Pendulum':
+                    state =  env.reset()
+                
+                for step in range(max_steps):
+                    if frame_idx > explore_steps:
+                        action = sac_trainer.policy_net.get_action(state, deterministic = DETERMINISTIC)
+                    else:
+                        action = sac_trainer.policy_net.sample_action()
+            
+                    try:
+                        if ENV ==  'Reacher':
+                            next_state, reward, done, _ = env.step(action, SPARSE_REWARD, SCREEN_SHOT)
+                        elif ENV ==  'Pendulum':
+                            next_state, reward, done, _ = env.step(action)
+                            env.render() 
+                    except KeyboardInterrupt:
+                        print('Finished')
+                        sac_trainer.save_model(model_path)
+
+                    replay_buffer.push(state, action, reward, next_state, done)
+
+                    state = next_state
+                    episode_reward += reward
+                    frame_idx += 1
+
+                    # if len(replay_buffer) > batch_size:
+                    if replay_buffer.get_length() > batch_size:
+                        for i in range(update_itr):
+                            _ = sac_trainer.update(batch_size, reward_scale=10., auto_entropy=AUTO_ENTROPY,
+                                                    target_entropy=-1. * action_dim)
+
+                    if eps % 10 == 0 and eps > 0:
+                        # plot(rewards, id)
+                        sac_trainer.save_model(model_path)
+
+                    if done:
+                        break
+                print('Worker: ', id, '| Episode: ', eps, '| Episode Reward: ', episode_reward)
+                # if len(rewards) == 0:
+                #     rewards.append(episode_reward)
+                # else:
+                #     rewards.append(rewards[-1] * 0.9 + episode_reward * 0.1)
+                rewards_queue.put(episode_reward)
+
+            sac_trainer.save_model(model_path)
+
+
+
+
+
+
+
+
 def ShareParameters(adamoptim):
     ''' share parameters of Adamoptimizers for multiprocessing '''
     for group in adamoptim.param_groups:
@@ -557,7 +651,7 @@ def ShareParameters(adamoptim):
 
 
 def plot(rewards):
-    clear_output(True)
+    # clear_output(True)
     plt.figure(figsize=(20, 5))
     plt.plot(rewards)
     plt.savefig('sac_v2_multi.png')
@@ -631,15 +725,20 @@ if __name__ == '__main__':
         processes = []
         rewards = [0]
 
-        for i in range(num_workers):
-            process = Process(target=worker, args=(
-            i, sac_trainer, ENV, rewards_queue, replay_buffer, max_episodes, max_steps, \
-            batch_size, explore_steps, update_itr, action_itr, AUTO_ENTROPY, DETERMINISTIC,
-            hidden_dim, model_path))  # the args contain shared and not shared
-            process.daemon = True  # all processes closed when the main stops
-            processes.append(process)
+        # for i in range(num_workers):
+            # process = Process(target=worker, args=(
+            # i, sac_trainer, ENV, rewards_queue, replay_buffer, max_episodes, max_steps, \
+            # batch_size, explore_steps, update_itr, action_itr, AUTO_ENTROPY, DETERMINISTIC,
+            # hidden_dim, model_path))  # the args contain shared and not shared
+            # process.daemon = True  # all processes closed when the main stops
+            # processes.append(process)
 
-        [p.start() for p in processes]
+        workers = [Worker(i, sac_trainer, ENV, rewards_queue, replay_buffer, max_episodes, max_steps, \
+                    batch_size, explore_steps, update_itr, action_itr, AUTO_ENTROPY, DETERMINISTIC,  \
+                    hidden_dim, model_path) for i in range(num_workers)]
+        [w.start() for w in workers]
+
+        # [p.start() for p in processes]
         while True:  # keep geting the episode reward from the queue
             r = rewards_queue.get()
             if r is not None:
@@ -650,7 +749,8 @@ if __name__ == '__main__':
             if len(rewards) % 20 == 0 and len(rewards) > 0:
                 plot(rewards)
 
-        [p.join() for p in processes]  # finished at the same time
+        # [p.join() for p in processes]  # finished at the same time
+        [p.join() for p in workers]  # finished at the same time
 
         sac_trainer.save_model(model_path)
 
