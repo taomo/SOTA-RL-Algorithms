@@ -352,6 +352,7 @@ class PolicyNetwork(nn.Module):
         state = state.reshape(-1, input_channels, state_seq_len)
         x = self.tcn(state)
         x = x[:, :, -1]
+        print(x.size())
         x = self.model(state)
 
         print('####',x.size())
