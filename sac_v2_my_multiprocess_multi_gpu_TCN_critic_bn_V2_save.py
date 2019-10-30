@@ -30,9 +30,16 @@ from multiprocessing import Process
 from multiprocessing.managers import BaseManager
 
 
+import gym_Vibration
+
+
+
 parser = argparse.ArgumentParser(description='Train or test neural net motor controller.')
 parser.add_argument('--train', dest='train', action='store_true', default=False)
 parser.add_argument('--test', dest='test', action='store_true', default=False)
+parser.add_argument("--env_name", default="Pendulum-v0")  # OpenAI gym environment name  VibrationEnv  Pendulum
+
+
 
 args = parser.parse_args()
 
@@ -180,26 +187,6 @@ class ReplayBuffer:
     def get_length(self):
         return len(self.buffer)
 
-'''
-class NormalizedActions(gym.ActionWrapper):
-    def _action(self, action):
-        low = self.action_space.low
-        high = self.action_space.high
-
-        action = low + (action + 1.0) * 0.5 * (high - low)
-        action = np.clip(action, low, high)
-
-        return action
-
-    def _reverse_action(self, action):
-        low = self.action_space.low
-        high = self.action_space.high
-
-        action = 2 * (action - low) / (high - low) - 1
-        action = np.clip(action, low, high)
-
-        return action
-'''
 
 
 class NormalizedActions(gym.ActionWrapper):
@@ -243,27 +230,69 @@ class ValueNetwork(nn.Module):
         x = self.linear4(x)
         return x
 
-
+        
 class SoftQNetwork(nn.Module):
     def __init__(self, num_inputs, num_actions, hidden_size, init_w=3e-3):
         super(SoftQNetwork, self).__init__()
+        
 
-        self.linear1 = nn.Linear(num_inputs + num_actions, hidden_size)
-        self.linear2 = nn.Linear(hidden_size, hidden_size)
-        self.linear3 = nn.Linear(hidden_size, hidden_size)
+        self.model = nn.Sequential(
+                    nn.Linear(num_inputs, hidden_size),           # 输入10维，隐层20维
+                    # nn.BatchNorm1d(hidden_size, affine=True, track_running_stats=True),     # BN层，参数为隐层的个数
+                    nn.LayerNorm(hidden_size, elementwise_affine=True),
+                    nn.ReLU(),                     # 激活函数
+
+                    nn.Linear(hidden_size, hidden_size),           # 输入10维，隐层20维
+                    # nn.BatchNorm1d(hidden_size, affine=True, track_running_stats=True),     # BN层，参数为隐层的个数
+                    nn.LayerNorm(hidden_size, elementwise_affine=True),
+                    nn.ReLU(),   
+
+                    # nn.Linear(num_inputs + num_actions, hidden_size),           # 输入10维，隐层20维
+                    # # nn.BatchNorm1d(hidden_size, affine=True, track_running_stats=True),     # BN层，参数为隐层的个数
+                    # # nn.LayerNorm(hidden_size, elementwise_affine=True),
+                    # nn.ReLU(),   
+
+                    # nn.Linear(hidden_size, hidden_size),           # 输入10维，隐层20维
+                    # # nn.BatchNorm1d(hidden_size, affine=True, track_running_stats=True),     # BN层，参数为隐层的个数
+                    # nn.LayerNorm(hidden_size, elementwise_affine=True),
+                    # nn.ReLU()            
+                )
+
+        self.linear3 = nn.Linear(hidden_size + num_actions, hidden_size)
+
         self.linear4 = nn.Linear(hidden_size, 1)
+
 
         self.linear4.weight.data.uniform_(-init_w, init_w)
         self.linear4.bias.data.uniform_(-init_w, init_w)
-
+        
     def forward(self, state, action):
-        x = torch.cat([state, action], 1)  # the dim 0 is number of samples
-        x = F.relu(self.linear1(x))
-        x = F.relu(self.linear2(x))
-        x = F.relu(self.linear3(x))
-        x = self.linear4(x)
-        return x
 
+        xs = self.model(state)
+        x = torch.cat([xs, action], 1) # the dim 0 is number of samples
+        x = F.relu(self.linear3(x))
+
+        return self.linear4(x)
+        
+
+ENV = ['Pendulum', 'Reacher'][0]
+
+# end_id = "Pendulum-v0"
+env = NormalizedActions(gym.make(args.env_name))  # VibrationEnv  Pendulum
+action_dim = env.action_space.shape[0]
+state_dim  = env.observation_space.shape[0]
+
+from model import TCN
+from TCN.tcn import TemporalConvNet
+input_channels = state_dim
+output_channels = action_dim
+# num_channels = [30, 30, 30, 30, 30, 30, 30, 30]
+num_channels = [30, 30]
+kernel_size = 1
+state_batch = 1
+state_seq_len = 1
+
+dropout = 0
 
 class PolicyNetwork(nn.Module):
     def __init__(self, num_inputs, num_actions, hidden_size, action_range=1., init_w=3e-3, log_std_min=-20, log_std_max=2):
@@ -272,10 +301,33 @@ class PolicyNetwork(nn.Module):
         self.log_std_min = log_std_min
         self.log_std_max = log_std_max
         
-        self.linear1 = nn.Linear(num_inputs, hidden_size)
-        self.linear2 = nn.Linear(hidden_size, hidden_size)
-        self.linear3 = nn.Linear(hidden_size, hidden_size)
-        self.linear4 = nn.Linear(hidden_size, hidden_size)
+        # self.linear1 = nn.Linear(num_inputs, hidden_size)
+        # self.linear2 = nn.Linear(hidden_size, hidden_size)
+        # self.linear3 = nn.Linear(hidden_size, hidden_size)
+        # self.linear4 = nn.Linear(hidden_size, hidden_size)
+
+        # self.tcn = TemporalConvNet(input_channels, num_channels, kernel_size=kernel_size, dropout=dropout)
+        self.tcn = nn.Conv1d(input_channels, out_channels = 30, kernel_size = kernel_size, stride=1, padding=0, dilation=1)
+
+        # torch.nn.Conv1d(in_channels, out_channels, kernel_size, stride=1, padding=0, dilation=1, groups=1, bias=True, padding_mode='zeros')
+        # self.fc1 = nn.Linear(num_channels[-1], hidden_size)
+        # self.linear1 = nn.Linear(num_channels[-1], hidden_size)
+
+        self.model = nn.Sequential(
+                    nn.Linear(num_channels[-1], hidden_size),           # 输入10维，隐层20维
+                    nn.LayerNorm(hidden_size, elementwise_affine=True),
+                    nn.ReLU(),                     # 激活函数
+        
+                )
+
+
+        # self.model = nn.Sequential(
+        #     nn.Linear(num_inputs, hidden_size),           # 输入10维，隐层20维
+        #     nn.LayerNorm(hidden_size, elementwise_affine=True),
+        #     nn.ReLU(),                     # 激活函数
+
+        # )
+
 
         self.mean_linear = nn.Linear(hidden_size, num_actions)
         self.mean_linear.weight.data.uniform_(-init_w, init_w)
@@ -288,11 +340,21 @@ class PolicyNetwork(nn.Module):
         self.action_range = action_range
         self.num_actions = num_actions
 
+        print('#########')
+
     def forward(self, state):
-        x = F.relu(self.linear1(state))
-        x = F.relu(self.linear2(x))
-        x = F.relu(self.linear3(x))
-        x = F.relu(self.linear4(x))
+        # x = F.relu(self.linear1(state))
+        # x = F.relu(self.linear2(x))
+        # x = F.relu(self.linear3(x))
+        # x = F.relu(self.linear4(x))
+        print('66666')
+
+        state = state.reshape(-1, input_channels, state_seq_len)
+        x = self.tcn(state)
+        x = x[:, :, -1]
+        x = self.model(state)
+
+        print('####',x.size())
 
         mean    = (self.mean_linear(x))
         # mean    = F.leaky_relu(self.mean_linear(x))
@@ -489,7 +551,7 @@ def worker(id, sac_trainer, ENV, rewards_queue, replay_buffer, max_episodes, max
         sac_trainer.to_cuda()
 
         print(sac_trainer, replay_buffer)  # sac_tainer are not the same, but all networks and optimizers in it are the same; replay  buffer is the same one.
-        if ENV == 'Reacher':
+        # if ENV == 'Reacher':
             # NUM_JOINTS=2
             # LINK_LENGTH=[200, 140]
             # INI_JOING_ANGLES=[0.1, 0.1]
@@ -503,23 +565,21 @@ def worker(id, sac_trainer, ENV, rewards_queue, replay_buffer, max_episodes, max
             # ini_joint_angles=INI_JOING_ANGLES, target_pos = [369,430], render=True, change_goal=False)
             # action_dim = env.num_actions
             # state_dim  = env.num_observations
-            pass
+        #     pass
 
-        elif ENV == 'Pendulum':
-            env = NormalizedActions(gym.make("Pendulum-v0"))
-            action_dim = env.action_space.shape[0]
-            state_dim  = env.observation_space.shape[0]
-            action_range=1.
+        # elif ENV == 'Pendulum':
+        #     env = NormalizedActions(gym.make("Pendulum-v0"))
+        #     action_dim = env.action_space.shape[0]
+        #     state_dim  = env.observation_space.shape[0]
+        #     action_range=1.
         
         frame_idx=0
         rewards=[]
         # training loop
         for eps in range(max_episodes):
             episode_reward = 0
-            if ENV == 'Reacher':
-                state = env.reset(SCREEN_SHOT)
-            elif ENV == 'Pendulum':
-                state =  env.reset()
+
+            state =  env.reset()
             
             for step in range(max_steps):
                 if frame_idx > explore_steps:
@@ -527,13 +587,9 @@ def worker(id, sac_trainer, ENV, rewards_queue, replay_buffer, max_episodes, max
                 else:
                     action = sac_trainer.policy_net.sample_action()
         
-                try:
-                    if ENV ==  'Reacher':
-                        next_state, reward, done, _ = env.step(action, SPARSE_REWARD, SCREEN_SHOT)
-                    elif ENV ==  'Pendulum':
-                        # print('action', action)
-                        next_state, reward, done, _ = env.step(action)
-                        # env.render() 
+                try:            
+                    next_state, reward, done, _ = env.step(action)
+                    # env.render() 
                 except KeyboardInterrupt:
                     print('Finished')
                     sac_trainer.save_model(model_path)
@@ -684,7 +740,7 @@ def plot(rewards,id):
     plt.plot(rewards)
     plt.savefig('sac_v2_multi.png')
     plt.show()
-    # plt.clf()\
+    # plt.clf()
 
 
 if __name__ == '__main__':
@@ -725,7 +781,7 @@ if __name__ == '__main__':
     max_episodes = 1000
     max_steps   = 20 if ENV ==  'Reacher' else 150  # Pendulum needs 150 steps per episode to learn well, cannot handle 20
     explore_steps = 0  # for random action sampling in the beginning of training
-    batch_size = 640
+    batch_size = 640  # 640
     update_itr = 1
     action_itr = 3
     AUTO_ENTROPY = True
@@ -750,7 +806,7 @@ if __name__ == '__main__':
 
         rewards_queue = mp.Queue()  # used for get rewards from all processes and plot the curve
 
-        num_workers = 2  # or: mp.cpu_count()
+        num_workers = 1  # or: mp.cpu_count()
         processes = []
         rewards = [0]
 
