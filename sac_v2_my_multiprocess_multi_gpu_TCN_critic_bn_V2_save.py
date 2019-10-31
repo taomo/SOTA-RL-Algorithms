@@ -287,7 +287,7 @@ from TCN.tcn import TemporalConvNet
 input_channels = state_dim
 output_channels = action_dim
 # num_channels = [30, 30, 30, 30, 30, 30, 30, 30]
-num_channels = [30, 30]
+num_channels = [30, 256]
 kernel_size = 1
 state_batch = 1
 state_seq_len = 1
@@ -306,9 +306,9 @@ class PolicyNetwork(nn.Module):
         # self.linear3 = nn.Linear(hidden_size, hidden_size)
         # self.linear4 = nn.Linear(hidden_size, hidden_size)
 
-        # self.tcn = TemporalConvNet(input_channels, num_channels, kernel_size=kernel_size, dropout=dropout)
-        self.tcn = nn.Conv1d(input_channels, out_channels = 30, kernel_size = kernel_size, stride=1, padding=0, dilation=1)
-
+        self.tcn = TemporalConvNet(input_channels, num_channels, kernel_size=kernel_size, dropout=dropout)
+        # self.tcn1 = nn.Conv1d(input_channels, out_channels = 256, kernel_size = kernel_size, stride=1, padding=0, dilation=1)
+        # self.tcn2 = nn.Conv1d(256, out_channels = 256, kernel_size = kernel_size, stride=1, padding=0, dilation=1)
         # torch.nn.Conv1d(in_channels, out_channels, kernel_size, stride=1, padding=0, dilation=1, groups=1, bias=True, padding_mode='zeros')
         # self.fc1 = nn.Linear(num_channels[-1], hidden_size)
         # self.linear1 = nn.Linear(num_channels[-1], hidden_size)
@@ -351,9 +351,12 @@ class PolicyNetwork(nn.Module):
 
         state = state.reshape(-1, input_channels, state_seq_len)
         x = self.tcn(state)
+        print('………………',x.size())
+        # x = self.tcn1(state)
+        # x = self.tcn2(state)
         x = x[:, :, -1]
         print(x.size())
-        x = self.model(state)
+        x = self.model(x)
 
         print('####',x.size())
 
@@ -631,7 +634,7 @@ class Worker(mp.Process):
 
     def run(self):
 
-        with torch.cuda.device(id % torch.cuda.device_count()):
+        with torch.cuda.device(id % eval(torch.cuda.device_count())):
             sac_trainer.to_cuda()
 
             print(sac_trainer, replay_buffer)  # sac_tainer are not the same, but all networks and optimizers in it are the same; replay  buffer is the same one.
@@ -812,22 +815,22 @@ if __name__ == '__main__':
         rewards = [0]
 
 
-        # workers = [Worker(i, sac_trainer, ENV, rewards_queue, replay_buffer, max_episodes, max_steps, \
-#             batch_size, explore_steps, update_itr, action_itr, AUTO_ENTROPY, DETERMINISTIC,  \
-#             hidden_dim, model_path) for i in range(num_workers)]
-        # [w.start() for w in workers]
+        workers = [Worker(i, sac_trainer, ENV, rewards_queue, replay_buffer, max_episodes, max_steps, \
+            batch_size, explore_steps, update_itr, action_itr, AUTO_ENTROPY, DETERMINISTIC,  \
+            hidden_dim, model_path) for i in range(num_workers)]
+        [w.start() for w in workers]
 
 
-        for i in range(num_workers):
-            process = Process(target=worker, args=(
-            i, sac_trainer, ENV, rewards_queue, replay_buffer, max_episodes, max_steps, \
-            batch_size, explore_steps, update_itr, action_itr, AUTO_ENTROPY, DETERMINISTIC,
-            hidden_dim, model_path))  # the args contain shared and not shared
-            process.daemon = True  # all processes closed when the main stops
-            processes.append(process)
+        # for i in range(num_workers):
+        #     process = Process(target=worker, args=(
+        #     i, sac_trainer, ENV, rewards_queue, replay_buffer, max_episodes, max_steps, \
+        #     batch_size, explore_steps, update_itr, action_itr, AUTO_ENTROPY, DETERMINISTIC,
+        #     hidden_dim, model_path))  # the args contain shared and not shared
+        #     process.daemon = True  # all processes closed when the main stops
+        #     processes.append(process)
 
  
-        [p.start() for p in processes]
+        # [p.start() for p in processes]
         while True:  # keep geting the episode reward from the queue
             r = rewards_queue.get()
             if r is not None:
@@ -838,8 +841,8 @@ if __name__ == '__main__':
             if len(rewards) % 20 == 0 and len(rewards) > 0:
                 plot(rewards, 3)
 
-        [p.join() for p in processes]  # finished at the same time
-        # [w.join() for w in workers]  # finished at the same time
+        # [p.join() for p in processes]  # finished at the same time
+        [w.join() for w in workers]  # finished at the same time
 
         sac_trainer.save_model(model_path)
 
