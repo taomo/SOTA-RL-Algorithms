@@ -307,7 +307,7 @@ class PolicyNetwork(nn.Module):
         # self.linear3 = nn.Linear(hidden_size, hidden_size)
         # self.linear4 = nn.Linear(hidden_size, hidden_size)
 
-        # self.tcn = TemporalConvNet(input_channels, num_channels, kernel_size=kernel_size, dropout=dropout)
+        self.tcn = TemporalConvNet(input_channels, num_channels, kernel_size=kernel_size, dropout=dropout)
         # self.tcn1 = nn.Conv1d(input_channels, out_channels = 256, kernel_size = kernel_size, stride=1, padding=0, dilation=1)
         # self.tcn2 = nn.Conv1d(256, out_channels = 256, kernel_size = kernel_size, stride=1, padding=0, dilation=1)
         # torch.nn.Conv1d(in_channels, out_channels, kernel_size, stride=1, padding=0, dilation=1, groups=1, bias=True, padding_mode='zeros')
@@ -317,12 +317,38 @@ class PolicyNetwork(nn.Module):
 
         # self.conv1d1 = nn.Conv1d(input_channels, out_channels = hidden_size, kernel_size = kernel_size, stride=1, padding=0, dilation=1)
         # self.conv1d2 = nn.Conv1d(hidden_size, out_channels = hidden_size, kernel_size = kernel_size, stride=1, padding=0, dilation=1)
-        # # self.conv1d3 = nn.Conv1d(input_channels, out_channels = 256, kernel_size = kernel_size, stride=1, padding=0, dilation=1)
+        # self.conv1d3 = nn.Conv1d(hidden_size, out_channels = hidden_size, kernel_size = kernel_size, stride=1, padding=0, dilation=1)
+
+        # self.LN1 = nn.LayerNorm([-1, hidden_size, state_seq_len], elementwise_affine=True)
+        self.model_conv = nn.Sequential(
+                    nn.Conv1d(input_channels, out_channels = hidden_size, kernel_size = kernel_size, stride=1, padding=0, dilation=1),           # 输入10维，隐层20维
+                    # nn.LayerNorm([-1, hidden_size, state_seq_len], elementwise_affine=True),                    
+                    # nn.ReLU(),                     # 激活函数
+
+                    nn.Conv1d(hidden_size, out_channels = hidden_size, kernel_size = kernel_size, stride=1, padding=0, dilation=1),           # 输入10维，隐层20维
+                    # nn.LayerNorm([-1, hidden_size, state_seq_len], elementwise_affine=True),
+                    # nn.ReLU(),  
+     
+                )
+
+
+        # self.model_lstm = nn.Sequential(
+        #             nn.LSTM(hidden_size, hidden_size , 2),          # 输入10维，隐层20维
+        #             # nn.LayerNorm([-1, hidden_size, state_seq_len], elementwise_affine=True),                    
+        #             # nn.ReLU(),                     # 激活函数
+        #             nn.LSTM(10, 20, 2)           # 输入10维，隐层20维
+        #             # nn.LayerNorm([-1, hidden_size, state_seq_len], elementwise_affine=True),
+        #             # nn.ReLU(),  
+     
+        #         )
+
+        self.lstm = nn.LSTM(hidden_size, hidden_size , 1, batch_first = True)        
+
 
 
 
         self.model = nn.Sequential(
-                    nn.Linear(input_channels, hidden_size),           # 输入10维，隐层20维
+                    nn.Linear(hidden_size, hidden_size),           # 输入10维，隐层20维
                     nn.LayerNorm(hidden_size, elementwise_affine=True),
                     nn.ReLU(),                     # 激活函数
 
@@ -365,21 +391,37 @@ class PolicyNetwork(nn.Module):
         # x = F.relu(self.linear4(x))
         
 
-        # state = state.reshape(-1, input_channels, state_seq_len)
-        # x = self.tcn(state)        
-        # x = x[:, :, -1]
-        # print(x.size())
-        # x = self.model(x)
+        state = state.reshape(-1, input_channels, state_seq_len)
+        x = self.tcn(state)        
+        x = x[:, :, -1]
+        print(x.size())
+        x = self.model(x)
 
         
         # state = state.reshape(-1, input_channels, state_seq_len)
-        # x = self.tcn(state) 
-        # x = self.conv1d1(state)
-        # x = self.conv1d2(x)
-               
-        # x = x[:, :, -1]
-        # print(x.size())
-        x = self.model(state)
+        # # x = self.tcn(state) 
+        # x = self.model_conv(state)
+        # # print(x.size()) 
+        # # x = self.conv1d1(state)
+        # # x = self.conv1d2(x)
+        # x = x.permute(0,2,1)  # batch_size x text_len x embedding_size -> batch_size x embedding_size x text_len
+        # # print(x.size()) 
+        # x , (h_n, h_c) = self.lstm(x, None)
+        # x = h_n
+        # # print(x.size()) 
+        # # r_out, (h_n, h_c) = self.rnn(x, None)   # None 表示 hidden state 会用全0的 state
+        # # input()
+        # # # 选取最后一个时间点的 r_out 输出
+        # # # 这里 r_out[:, -1, :] 的值也是 h_n 的值
+        # # out = self.out(r_out[:, -1, :])
+
+        # # print(x.size())      
+        # # x = x[:, :, -1]
+        # # print(x.size())
+        # x = self.model(x)
+
+
+
 
 
 
