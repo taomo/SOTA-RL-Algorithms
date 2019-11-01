@@ -38,6 +38,7 @@ parser = argparse.ArgumentParser(description='Train or test neural net motor con
 parser.add_argument('--train', dest='train', action='store_true', default=False)
 parser.add_argument('--test', dest='test', action='store_true', default=False)
 parser.add_argument("--env_name", default="Pendulum-v0")  # OpenAI gym environment name  VibrationEnv  Pendulum
+# parser.add_argument("--env_name", default="VibrationEnv-v0")  # OpenAI gym environment name  VibrationEnv  Pendulum
 
 
 
@@ -306,17 +307,32 @@ class PolicyNetwork(nn.Module):
         # self.linear3 = nn.Linear(hidden_size, hidden_size)
         # self.linear4 = nn.Linear(hidden_size, hidden_size)
 
-        self.tcn = TemporalConvNet(input_channels, num_channels, kernel_size=kernel_size, dropout=dropout)
+        # self.tcn = TemporalConvNet(input_channels, num_channels, kernel_size=kernel_size, dropout=dropout)
         # self.tcn1 = nn.Conv1d(input_channels, out_channels = 256, kernel_size = kernel_size, stride=1, padding=0, dilation=1)
         # self.tcn2 = nn.Conv1d(256, out_channels = 256, kernel_size = kernel_size, stride=1, padding=0, dilation=1)
         # torch.nn.Conv1d(in_channels, out_channels, kernel_size, stride=1, padding=0, dilation=1, groups=1, bias=True, padding_mode='zeros')
         # self.fc1 = nn.Linear(num_channels[-1], hidden_size)
         # self.linear1 = nn.Linear(num_channels[-1], hidden_size)
 
+
+        # self.conv1d1 = nn.Conv1d(input_channels, out_channels = hidden_size, kernel_size = kernel_size, stride=1, padding=0, dilation=1)
+        # self.conv1d2 = nn.Conv1d(hidden_size, out_channels = hidden_size, kernel_size = kernel_size, stride=1, padding=0, dilation=1)
+        # # self.conv1d3 = nn.Conv1d(input_channels, out_channels = 256, kernel_size = kernel_size, stride=1, padding=0, dilation=1)
+
+
+
         self.model = nn.Sequential(
-                    nn.Linear(num_channels[-1], hidden_size),           # 输入10维，隐层20维
+                    nn.Linear(input_channels, hidden_size),           # 输入10维，隐层20维
                     nn.LayerNorm(hidden_size, elementwise_affine=True),
                     nn.ReLU(),                     # 激活函数
+
+                    nn.Linear(hidden_size, hidden_size),           # 输入10维，隐层20维
+                    nn.LayerNorm(hidden_size, elementwise_affine=True),
+                    nn.ReLU(),  
+
+                    nn.Linear(hidden_size, hidden_size),           # 输入10维，隐层20维
+                    nn.LayerNorm(hidden_size, elementwise_affine=True),
+                    nn.ReLU(),  
         
                 )
 
@@ -347,18 +363,25 @@ class PolicyNetwork(nn.Module):
         # x = F.relu(self.linear2(x))
         # x = F.relu(self.linear3(x))
         # x = F.relu(self.linear4(x))
-        print('66666')
+        
 
-        state = state.reshape(-1, input_channels, state_seq_len)
-        x = self.tcn(state)
-        print('………………',x.size())
-        # x = self.tcn1(state)
-        # x = self.tcn2(state)
-        x = x[:, :, -1]
-        print(x.size())
-        x = self.model(x)
+        # state = state.reshape(-1, input_channels, state_seq_len)
+        # x = self.tcn(state)        
+        # x = x[:, :, -1]
+        # print(x.size())
+        # x = self.model(x)
 
-        print('####',x.size())
+        
+        # state = state.reshape(-1, input_channels, state_seq_len)
+        # x = self.tcn(state) 
+        # x = self.conv1d1(state)
+        # x = self.conv1d2(x)
+               
+        # x = x[:, :, -1]
+        # print(x.size())
+        x = self.model(state)
+
+
 
         mean    = (self.mean_linear(x))
         # mean    = F.leaky_relu(self.mean_linear(x))
@@ -576,6 +599,10 @@ def worker(id, sac_trainer, ENV, rewards_queue, replay_buffer, max_episodes, max
         #     action_dim = env.action_space.shape[0]
         #     state_dim  = env.observation_space.shape[0]
         #     action_range=1.
+        env = NormalizedActions(gym.make("Pendulum-v0"))
+        action_dim = env.action_space.shape[0]
+        state_dim  = env.observation_space.shape[0]
+        action_range=1.
         
         frame_idx=0
         rewards=[]
@@ -631,6 +658,10 @@ class Worker(mp.Process):
            explore_steps, \
            update_itr, action_itr, AUTO_ENTROPY, DETERMINISTIC, hidden_dim, model_path):
         super(Worker, self).__init__()
+        # self.lnet = TCN(input_size, output_size, num_channels, kernel_size, dropout)
+        # self.env = NormalizedActions(gym.make(args.env_name))
+
+
 
     def run(self):
 
@@ -655,7 +686,7 @@ class Worker(mp.Process):
                 pass
 
             elif ENV == 'Pendulum':
-                env = NormalizedActions(gym.make("Pendulum-v0"))
+                env = NormalizedActions(gym.make(args.env_name))
                 action_dim = env.action_space.shape[0]
                 state_dim  = env.observation_space.shape[0]
                 action_range=1.
@@ -810,27 +841,26 @@ if __name__ == '__main__':
 
         rewards_queue = mp.Queue()  # used for get rewards from all processes and plot the curve
 
-        num_workers = 1  # or: mp.cpu_count()
+        num_workers = 2  # or: mp.cpu_count()
         processes = []
         rewards = [0]
 
 
-        workers = [Worker(i, sac_trainer, ENV, rewards_queue, replay_buffer, max_episodes, max_steps, \
-            batch_size, explore_steps, update_itr, action_itr, AUTO_ENTROPY, DETERMINISTIC,  \
-            hidden_dim, model_path) for i in range(num_workers)]
-        [w.start() for w in workers]
+        # workers = [Worker(i, sac_trainer, ENV, rewards_queue, replay_buffer, max_episodes, max_steps, \
+        #     batch_size, explore_steps, update_itr, action_itr, AUTO_ENTROPY, DETERMINISTIC,  \
+        #     hidden_dim, model_path) for i in range(num_workers)]
+        # [w.start() for w in workers]
 
 
-        # for i in range(num_workers):
-        #     process = Process(target=worker, args=(
-        #     i, sac_trainer, ENV, rewards_queue, replay_buffer, max_episodes, max_steps, \
-        #     batch_size, explore_steps, update_itr, action_itr, AUTO_ENTROPY, DETERMINISTIC,
-        #     hidden_dim, model_path))  # the args contain shared and not shared
-        #     process.daemon = True  # all processes closed when the main stops
-        #     processes.append(process)
+        for i in range(num_workers):
+            process = Process(target=worker, args=(
+            i, sac_trainer, ENV, rewards_queue, replay_buffer, max_episodes, max_steps, \
+            batch_size, explore_steps, update_itr, action_itr, AUTO_ENTROPY, DETERMINISTIC,
+            hidden_dim, model_path))  # the args contain shared and not shared
+            process.daemon = True  # all processes closed when the main stops
+            processes.append(process) 
+        [p.start() for p in processes]
 
- 
-        # [p.start() for p in processes]
         while True:  # keep geting the episode reward from the queue
             r = rewards_queue.get()
             if r is not None:
@@ -841,8 +871,8 @@ if __name__ == '__main__':
             if len(rewards) % 20 == 0 and len(rewards) > 0:
                 plot(rewards, 3)
 
-        # [p.join() for p in processes]  # finished at the same time
-        [w.join() for w in workers]  # finished at the same time
+        [p.join() for p in processes]  # finished at the same time
+        # [w.join() for w in workers]  # finished at the same time
 
         sac_trainer.save_model(model_path)
 
