@@ -649,7 +649,8 @@ def worker(id, sac_trainer, ENV, rewards_queue, replay_buffer, max_episodes, max
         #     action_dim = env.action_space.shape[0]
         #     state_dim  = env.observation_space.shape[0]
         #     action_range=1.
-        env = NormalizedActions(gym.make("Pendulum-v0"))
+        
+        env = NormalizedActions(gym.make(args.env_name))
         action_dim = env.action_space.shape[0]
         state_dim  = env.observation_space.shape[0]
         action_range=1.
@@ -841,26 +842,31 @@ if __name__ == '__main__':
         replay_buffer_size)  # share the replay buffer through manager
 
 # choose env
-    ENV = ['Pendulum', 'Reacher'][0]
-    if ENV == 'Reacher':
-        # NUM_JOINTS=2
-        # LINK_LENGTH=[200, 140]
-        # SCREEN_SIZE=1000
-        # SPARSE_REWARD=False
-        # SCREEN_SHOT=False
-        # action_range = 10.0
+    # ENV = ['Pendulum', 'Reacher'][0]
+    # if ENV == 'Reacher':
+    #     # NUM_JOINTS=2
+    #     # LINK_LENGTH=[200, 140]
+    #     # SCREEN_SIZE=1000
+    #     # SPARSE_REWARD=False
+    #     # SCREEN_SHOT=False
+    #     # action_range = 10.0
 
-        # env=Reacher(screen_size=SCREEN_SIZE, num_joints=NUM_JOINTS, link_lengths = LINK_LENGTH, \
-        # ini_joint_angles=INI_JOING_ANGLES, target_pos = [369,430], render=True, change_goal=False)
-        # action_dim = env.num_actions
-        # state_dim  = env.num_observations
-        pass
+    #     # env=Reacher(screen_size=SCREEN_SIZE, num_joints=NUM_JOINTS, link_lengths = LINK_LENGTH, \
+    #     # ini_joint_angles=INI_JOING_ANGLES, target_pos = [369,430], render=True, change_goal=False)
+    #     # action_dim = env.num_actions
+    #     # state_dim  = env.num_observations
+    #     pass
 
-    elif ENV == 'Pendulum':
-        env = NormalizedActions(gym.make("Pendulum-v0"))
-        action_dim = env.action_space.shape[0]
-        state_dim  = env.observation_space.shape[0]
-        action_range=1.
+    # elif ENV == 'Pendulum':
+    #     env = NormalizedActions(gym.make("Pendulum-v0"))
+    #     action_dim = env.action_space.shape[0]
+    #     state_dim  = env.observation_space.shape[0]
+    #     action_range=1.
+
+    env = NormalizedActions(gym.make(args.))
+    action_dim = env.action_space.shape[0]
+    state_dim  = env.observation_space.shape[0]
+    action_range=1.
 
     # hyper-parameters for RL training, no need for sharing across processes
     max_episodes = 1000
@@ -891,7 +897,7 @@ if __name__ == '__main__':
 
         rewards_queue = mp.Queue()  # used for get rewards from all processes and plot the curve
 
-        num_workers = 2  # or: mp.cpu_count()
+        num_workers = 1  # or: mp.cpu_count()
         processes = []
         rewards = [0]
 
