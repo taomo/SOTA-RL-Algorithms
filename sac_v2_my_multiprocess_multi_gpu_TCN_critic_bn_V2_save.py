@@ -30,7 +30,7 @@ from multiprocessing import Process
 from multiprocessing.managers import BaseManager
 
 
-import gym_Vibration
+# import gym_Vibration
 
 
 
@@ -43,6 +43,14 @@ parser.add_argument("--env_name", default="Pendulum-v0")  # OpenAI gym environme
 
 
 args = parser.parse_args()
+
+
+import torch
+print(torch.__version__)
+print(torch.cuda.get_device_name(0))
+
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
+print(device)
 
 
 class SharedAdam(optim.Optimizer):
