@@ -921,9 +921,10 @@ if __name__ == '__main__':
             process.daemon = True  # all processes closed when the main stops
             processes.append(process) 
         [p.start() for p in processes]
-
+        counts = 0
         while True:  # keep geting the episode reward from the queue
             r = rewards_queue.get()
+            print('counts: {}'.format(counts))
             if r is not None:
                 rewards.append(0.9 * rewards[-1] + 0.1 * r)  # moving average of episode rewards
             else:
