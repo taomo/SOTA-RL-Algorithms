@@ -30,14 +30,14 @@ from multiprocessing import Process
 from multiprocessing.managers import BaseManager
 
 
-# import gym_Vibration
+import gym_Vibration
 
 
 
 parser = argparse.ArgumentParser(description='Train or test neural net motor controller.')
 parser.add_argument('--train', dest='train', action='store_true', default=False)
 parser.add_argument('--test', dest='test', action='store_true', default=False)
-parser.add_argument("--env_name", default="Pendulum-v0")  # OpenAI gym environment name  VibrationEnv  Pendulum
+parser.add_argument("--env_name", default="VibrationEnv-v0")  # OpenAI gym environment name  VibrationEnv  Pendulum
 # parser.add_argument("--env_name", default="VibrationEnv-v0")  # OpenAI gym environment name  VibrationEnv  Pendulum
 
 
@@ -315,7 +315,7 @@ class PolicyNetwork(nn.Module):
         # self.linear3 = nn.Linear(hidden_size, hidden_size)
         # self.linear4 = nn.Linear(hidden_size, hidden_size)
 
-        self.tcn = TemporalConvNet(input_channels, num_channels, kernel_size=kernel_size, dropout=dropout)
+        # self.tcn = TemporalConvNet(input_channels, num_channels, kernel_size=kernel_size, dropout=dropout)
         # self.tcn1 = nn.Conv1d(input_channels, out_channels = 256, kernel_size = kernel_size, stride=1, padding=0, dilation=1)
         # self.tcn2 = nn.Conv1d(256, out_channels = 256, kernel_size = kernel_size, stride=1, padding=0, dilation=1)
         # torch.nn.Conv1d(in_channels, out_channels, kernel_size, stride=1, padding=0, dilation=1, groups=1, bias=True, padding_mode='zeros')
@@ -331,11 +331,16 @@ class PolicyNetwork(nn.Module):
         self.model_conv = nn.Sequential(
                     nn.Conv1d(input_channels, out_channels = hidden_size, kernel_size = kernel_size, stride=1, padding=0, dilation=1),           # 输入10维，隐层20维
                     # nn.LayerNorm([-1, hidden_size, state_seq_len], elementwise_affine=True),                    
-                    # nn.ReLU(),                     # 激活函数
+                    nn.ReLU(),                     # 激活函数
 
                     nn.Conv1d(hidden_size, out_channels = hidden_size, kernel_size = kernel_size, stride=1, padding=0, dilation=1),           # 输入10维，隐层20维
                     # nn.LayerNorm([-1, hidden_size, state_seq_len], elementwise_affine=True),
-                    # nn.ReLU(),  
+                    nn.ReLU(),  
+
+
+                    nn.Conv1d(hidden_size, out_channels = hidden_size, kernel_size = kernel_size, stride=1, padding=0, dilation=1),           # 输入10维，隐层20维
+                    # nn.LayerNorm([-1, hidden_size, state_seq_len], elementwise_affine=True),
+                    nn.ReLU(),  
      
                 )
 
@@ -350,7 +355,7 @@ class PolicyNetwork(nn.Module):
      
         #         )
 
-        self.lstm = nn.LSTM(hidden_size, hidden_size , 1, batch_first = True)        
+        # self.lstm = nn.LSTM(hidden_size, hidden_size , 1, batch_first = True)        
 
 
 
@@ -399,16 +404,16 @@ class PolicyNetwork(nn.Module):
         # x = F.relu(self.linear4(x))
         
 
-        state = state.reshape(-1, input_channels, state_seq_len)
-        x = self.tcn(state)        
-        x = x[:, :, -1]
-        print(x.size())
-        x = self.model(x)
+        # state = state.reshape(-1, input_channels, state_seq_len)
+        # x = self.tcn(state)        
+        # x = x[:, :, -1]
+        # print(x.size())
+        # x = self.model(x)
 
         
-        # state = state.reshape(-1, input_channels, state_seq_len)
+        state = state.reshape(-1, input_channels, state_seq_len)
         # # x = self.tcn(state) 
-        # x = self.model_conv(state)
+        x = self.model_conv(state)
         # # print(x.size()) 
         # # x = self.conv1d1(state)
         # # x = self.conv1d2(x)
@@ -424,9 +429,9 @@ class PolicyNetwork(nn.Module):
         # # out = self.out(r_out[:, -1, :])
 
         # # print(x.size())      
-        # # x = x[:, :, -1]
+        x = x[:, :, -1]
         # # print(x.size())
-        # x = self.model(x)
+        x = self.model(x)
 
 
 
@@ -649,8 +654,8 @@ def worker(id, sac_trainer, ENV, rewards_queue, replay_buffer, max_episodes, max
         #     action_dim = env.action_space.shape[0]
         #     state_dim  = env.observation_space.shape[0]
         #     action_range=1.
-        
-        env = NormalizedActions(gym.make(args.env_name))
+
+        env = NormalizedActions(gym.make(args.env_name))  # VibrationEnv  Pendulum
         action_dim = env.action_space.shape[0]
         state_dim  = env.observation_space.shape[0]
         action_range=1.
@@ -863,7 +868,7 @@ if __name__ == '__main__':
     #     state_dim  = env.observation_space.shape[0]
     #     action_range=1.
 
-    env = NormalizedActions(gym.make(args.))
+    env = NormalizedActions(gym.make(args.env_name))  # VibrationEnv  Pendulum
     action_dim = env.action_space.shape[0]
     state_dim  = env.observation_space.shape[0]
     action_range=1.
@@ -897,7 +902,7 @@ if __name__ == '__main__':
 
         rewards_queue = mp.Queue()  # used for get rewards from all processes and plot the curve
 
-        num_workers = 1  # or: mp.cpu_count()
+        num_workers = 2  # or: mp.cpu_count()
         processes = []
         rewards = [0]
 
