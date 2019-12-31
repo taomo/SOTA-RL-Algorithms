@@ -685,16 +685,16 @@ if __name__ == '__main__':
 
             eval_input = np.array(eval_input)
 
-            # names =  [r'x1(t)', r'x2(t)', r'x1c(t)', r'x2c(t)', r'x1cc(t)', r'x2cc(t)']
-            # DataSet = list(eval_states)
-            # # DataSet = list(zip(episodes,eval_states))
-            # dataframe = pd.DataFrame(data = DataSet )
-            # dataframe.columns = names
-            # dataframe.to_csv("taomo10k.csv",index=False,sep=',')
+            names =  [r'x1(t)', r'x2(t)', r'x1c(t)', r'x2c(t)', r'x1cc(t)', r'x2cc(t)']
+            DataSet = list(eval_states)
+            # DataSet = list(zip(episodes,eval_states))
+            dataframe = pd.DataFrame(data = DataSet )
+            dataframe.columns = names
+            dataframe.to_csv("taomo10k.csv",index=False,sep=',')
 
-            # import pandas as pd
-            # data = pd.read_csv('taomo10k.csv')
-            # print(data.head())
+            import pandas as pd
+            data = pd.read_csv('taomo10k.csv')
+            print(data.head())
 
 
 
