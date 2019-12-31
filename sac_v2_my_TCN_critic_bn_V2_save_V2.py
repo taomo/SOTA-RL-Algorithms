@@ -639,6 +639,7 @@ if __name__ == '__main__':
             eval_BottomLayerForceRate = []
 
             eval_input = []
+            eval_action = []
 
 
             state =  env.reset()
@@ -665,7 +666,7 @@ if __name__ == '__main__':
                 eval_BottomLayerForceRate.append(info['BottomLayerForceRate'])
 
                 eval_input.append(info['input'])
-        
+                eval_action.append(action)
 
             # print('Episode: ', eps, '| Episode Reward: ', episode_reward)
 
@@ -685,15 +686,16 @@ if __name__ == '__main__':
 
             eval_input = np.array(eval_input)
 
-            names =  [r'x1(t)', r'x2(t)', r'x1c(t)', r'x2c(t)', r'x1cc(t)', r'x2cc(t)']
-            DataSet = list(eval_states)
+            import pandas as pd
+            names =  [r'x1(t)', r'x2(t)', r'x1c(t)', r'x2c(t)', r'x1cc(t)', r'x2cc(t)', r'基座受力', r'基座受力比率', r'作动力', r'激励力']
+            data_temp = np.column_stack((eval_states, eval_BottomLayerForce, eval_BottomLayerForceRate, eval_input))
+            DataSet = list(data_temp)
             # DataSet = list(zip(episodes,eval_states))
             dataframe = pd.DataFrame(data = DataSet )
             dataframe.columns = names
-            dataframe.to_csv("taomo10k.csv",index=False,sep=',')
-
-            import pandas as pd
-            data = pd.read_csv('taomo10k.csv')
+            dataframe.to_csv("data.csv",index=False,sep=',')
+            
+            data = pd.read_csv('data.csv')
             print(data.head())
 
 
