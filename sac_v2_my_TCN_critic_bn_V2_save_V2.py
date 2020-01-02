@@ -38,13 +38,42 @@ import gym_Vibration
 #     device = torch.device("cpu")
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 print(device)
+    # use_cuda = not args['no_cuda'] and torch.cuda.is_available()
 
+    # torch.manual_seed(args['seed'])
+
+    # device = torch.device("cuda" if use_cuda else "cpu")
 
 parser = argparse.ArgumentParser(description='Train or test neural net motor controller.')
 parser.add_argument('--train', dest='train', action='store_true', default=False)
 parser.add_argument('--test', dest='test', action='store_true', default=True)  # True  False
 parser.add_argument('--go_on_train', dest='go_on_train', action='store_true', default=False)  # True  False
 parser.add_argument("--env_name", default="VibrationEnv-v0")  # OpenAI gym environment name  VibrationEnv  Pendulum
+
+parser.add_argument('--batch_size', type=int, default=32, metavar='N',
+                    help='batch size (default: 32)')
+parser.add_argument('--cuda', action='store_false',
+                    help='use CUDA (default: True)')
+parser.add_argument('--dropout', type=float, default=0.0,
+                    help='dropout applied to layers (default: 0.0)')
+parser.add_argument('--clip', type=float, default=-1,
+                    help='gradient clip, -1 means no clip (default: -1)')
+parser.add_argument('--epochs', type=int, default=10,
+                    help='upper epoch limit (default: 10)')
+parser.add_argument('--ksize', type=int, default=7,
+                    help='kernel size (default: 7)')
+parser.add_argument('--levels', type=int, default=2,
+                    help='# of levels (default: 2)')
+parser.add_argument('--seq_len', type=int, default=400,
+                    help='sequence length (default: 400)')
+parser.add_argument('--log-interval', type=int, default=100, metavar='N',
+                    help='report interval (default: 100')
+parser.add_argument('--lr', type=float, default=3e-4,
+                    help='initial learning rate (default: 3e-4)')
+# parser.add_argument('--optim', type=str, default='Adam',
+#                     help='optimizer to use (default: Adam)')
+parser.add_argument('--nhid', type=int, default=256,
+                    help='number of hidden units per layer (default: 256)')
 
 args = parser.parse_args()
 
@@ -232,7 +261,7 @@ class PolicyNetwork(nn.Module):
         # self.hidden_dim = hidden_size  
       
         # self.bn1 = nn.BatchNorm1d(state_dim)
-        self.tcn = TemporalConvNet(input_channels, num_channels, kernel_size=kernel_size, dropout=dropout)
+        self.tcn = TemporalConvNet(input_channels, [args.nhid]*args.levels, kernel_size=kernel_size, dropout=args.dropout)
         # self.fc1 = nn.Linear(num_channels[-1], hidden_size)
 
 
@@ -351,9 +380,12 @@ class SAC_Trainer():
         self.soft_q_criterion1 = nn.MSELoss()
         self.soft_q_criterion2 = nn.MSELoss()
 
-        soft_q_lr = 3e-4
-        policy_lr = 3e-4
-        alpha_lr  = 3e-4
+        # soft_q_lr = 3e-4
+        # policy_lr = 3e-4
+        # alpha_lr  = 3e-4
+        soft_q_lr = args.lr
+        policy_lr = args.lr
+        alpha_lr  = args.lr
 
         self.soft_q_optimizer1 = optim.Adam(self.soft_q_net1.parameters(), lr=soft_q_lr)
         self.soft_q_optimizer2 = optim.Adam(self.soft_q_net2.parameters(), lr=soft_q_lr)
@@ -553,12 +585,15 @@ model_path = './model_save/sac_v2_'
 
 tensorboard_path = './model_save/'
 
-sac_trainer=SAC_Trainer(replay_buffer, hidden_dim=hidden_dim, action_range=action_range  )
 
-from torch.utils.tensorboard import SummaryWriter
-writer = SummaryWriter(tensorboard_path)
 
-if __name__ == '__main__':
+def main(args):
+
+    sac_trainer=SAC_Trainer(replay_buffer, hidden_dim=hidden_dim, action_range=action_range  )
+
+    from torch.utils.tensorboard import SummaryWriter
+    writer = SummaryWriter(tensorboard_path)
+   
     if args.train:
         # training loop
      
@@ -678,6 +713,7 @@ if __name__ == '__main__':
                      ))           
 
            
+           
             episodes = np.array(episodes)
             eval_states = np.array(eval_states)
 
@@ -686,17 +722,17 @@ if __name__ == '__main__':
 
             eval_input = np.array(eval_input)
 
-            import pandas as pd
-            names =  [r'x1(t)', r'x2(t)', r'x1c(t)', r'x2c(t)', r'x1cc(t)', r'x2cc(t)', r'基座受力', r'基座受力比率', r'作动力', r'激励力']
-            data_temp = np.column_stack((eval_states, eval_BottomLayerForce, eval_BottomLayerForceRate, eval_input))
-            DataSet = list(data_temp)
-            # DataSet = list(zip(episodes,eval_states))
-            dataframe = pd.DataFrame(data = DataSet )
-            dataframe.columns = names
-            dataframe.to_csv("data.csv",index=False,sep=',')
+            # import pandas as pd
+            # names =  [r'x1(t)', r'x2(t)', r'x1c(t)', r'x2c(t)', r'x1cc(t)', r'x2cc(t)', r'基座受力', r'基座受力比率', r'作动力', r'激励力']
+            # data_temp = np.column_stack((eval_states, eval_BottomLayerForce, eval_BottomLayerForceRate, eval_input))
+            # DataSet = list(data_temp)
+            # # DataSet = list(zip(episodes,eval_states))
+            # dataframe = pd.DataFrame(data = DataSet )
+            # dataframe.columns = names
+            # dataframe.to_csv("data.csv", encoding = 'utf_8_sig',index=False,sep=',')
             
-            data = pd.read_csv('data.csv')
-            print(data.head())
+            # data = pd.read_csv('data.csv')
+            # print(data.head())
 
 
 
@@ -812,8 +848,9 @@ if __name__ == '__main__':
 
             plt.show()
 
-
+        
         env.close()
+        return episode_reward
 
 
     if args.go_on_train:
@@ -904,6 +941,33 @@ if __name__ == '__main__':
 
             eps += 1
 
-   
         sac_trainer.save_model(model_path, [eps, frame_idx] )
 
+        return rewards.mean()
+ 
+
+   
+
+
+if __name__ == '__main__':
+    main(args)
+    # import nni
+    # import logging
+    # logger = logging.getLogger('vibration-example')
+ 
+
+    # try:
+    #     """
+    #     设置参数自动更新，假设params 是我们的默认参数
+    #     注意params是**字典**类型的变量
+    #     """
+    #     params = vars(args)
+    #     tuner_params= nni.get_next_parameter() # 这会获得一组搜索空间中的参数
+    #     params.update(tuner_params)
+    #     main(params)
+    #     # ————————————————
+    #     # 版权声明：本文为CSDN博主「这个月亮不太亮」的原创文章，遵循 CC 4.0 BY-SA 版权协议，转载请附上原文出处链接及本声明。
+    #     # 原文链接：https://blog.csdn.net/weixin_43653494/article/details/101039198      
+    # except Exception as exception:
+    #     logger.exception(exception)
+    #     raise    
