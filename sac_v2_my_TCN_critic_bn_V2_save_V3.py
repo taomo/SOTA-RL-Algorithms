@@ -30,11 +30,20 @@ import time
 
 import gym_Vibration
 
-import nni
-import logging
-logger = logging.getLogger('vibration-example')
-    
 
+import logging
+# logger = logging.getLogger('vibration-example')
+# logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
+logging.basicConfig(format='%(levelname)s:%(message)s', filename='example.log', level=logging.DEBUG)    
+# logging.debug('This message should go to the log file')
+# logging.info('So should this')
+# logging.warning('And this, too')
+# print('$$$$$$')
+# input()
+
+# logging.basicConfig(filename='example.log', level=logging.INFO)    
+# logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
+import nni
 # GPU = True
 # device_idx = 0
 # if GPU:
@@ -42,12 +51,14 @@ logger = logging.getLogger('vibration-example')
 # else:
 #     device = torch.device("cpu")
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
+device = 'cpu'
 print(device)
     # use_cuda = not args['no_cuda'] and torch.cuda.is_available()
 
     # torch.manual_seed(args['seed'])
 
     # device = torch.device("cuda" if use_cuda else "cpu")
+
 
 parser = argparse.ArgumentParser(description='Train or test neural net motor controller.')
 parser.add_argument('--train', dest='train', action='store_true', default=False)
@@ -84,31 +95,9 @@ parser.add_argument('--nhid', type=int, default=256,
 args, _ = parser.parse_known_args()
 
 
-# def get_params():
-#     # Training settings
-#     parser = argparse.ArgumentParser(description='PyTorch MNIST Example')
-#     parser.add_argument("--data_dir", type=str,
-#                         default='/tmp/tensorflow/mnist/input_data', help="data directory")
-#     parser.add_argument('--batch_size', type=int, default=64, metavar='N',
-#                         help='input batch size for training (default: 64)')
-#     parser.add_argument("--hidden_size", type=int, default=512, metavar='N',
-#                         help='hidden layer size (default: 512)')
-#     parser.add_argument('--lr', type=float, default=0.01, metavar='LR',
-#                         help='learning rate (default: 0.01)')
-#     parser.add_argument('--momentum', type=float, default=0.5, metavar='M',
-#                         help='SGD momentum (default: 0.5)')
-#     parser.add_argument('--epochs', type=int, default=10, metavar='N',
-#                         help='number of epochs to train (default: 10)')
-#     parser.add_argument('--seed', type=int, default=1, metavar='S',
-#                         help='random seed (default: 1)')
-#     parser.add_argument('--no_cuda', action='store_true', default=False,
-#                         help='disables CUDA training')
-#     parser.add_argument('--log_interval', type=int, default=1000, metavar='N',
-#                         help='how many batches to wait before logging training status')
+# use_cuda = not args['no_cuda'] and torch.cuda.is_available()
 
-
-#     args, _ = parser.parse_known_args()
-#     return args
+# device = torch.device("cuda" if use_cuda else "cpu")
 
 
 
@@ -368,7 +357,7 @@ class PolicyNetwork(nn.Module):
 
 
 class SAC_Trainer():
-    def __init__(self, replay_buffer, hidden_dim, action_range):
+    def __init__(self, replay_buffer, hidden_dim, action_range, args):
         self.replay_buffer = replay_buffer
 
         self.soft_q_net1 = SoftQNetwork(state_dim, action_dim, hidden_dim).to(device)
@@ -398,13 +387,14 @@ class SAC_Trainer():
         # soft_q_lr = 3e-4
         # policy_lr = 3e-4
         # alpha_lr  = 3e-4
-        # soft_q_lr = args['lr']
-        # policy_lr = args['lr']
-        # alpha_lr  = args['lr']
 
-        soft_q_lr = args.lr
-        policy_lr = args.lr
-        alpha_lr  = args.lr
+        soft_q_lr = args['lr']
+        policy_lr = args['lr']
+        alpha_lr  = args['lr']
+
+        # soft_q_lr = args.lr
+        # policy_lr = args.lr
+        # alpha_lr  = args.lr
 
 
         self.soft_q_optimizer1 = optim.Adam(self.soft_q_net1.parameters(), lr=soft_q_lr)
@@ -563,7 +553,7 @@ replay_buffer = ReplayBuffer(replay_buffer_size)
 action_range=1.
 
 # hyper-parameters for RL training
-max_episodes  = 1432  # 5000
+max_episodes  = 0  # 5000
 # max_steps   = 20 if ENV ==  'Reacher' else 150  # Pendulum needs 150 steps per episode to learn well, cannot handle 20
 max_steps = 500
 frame_idx   = 0
@@ -602,7 +592,8 @@ def tarin(sac_trainer, eps, frame_idx):
     # for eps in range(max_episodes):     
 
     while eps <= max_episodes:
-        
+        print('train:')
+
         state =  env.reset()
         episode_reward = 0
         
@@ -623,26 +614,26 @@ def tarin(sac_trainer, eps, frame_idx):
             frame_idx += 1
 
 
-            if args.env_name == 'VibrationEnv-v0':
-                writer.add_scalar('Rewards/NoiseAmplitude', info['NoiseAmplitude'], frame_idx)
-                writer.add_scalar('Rewards/VibrationAmplitude', info['VibrationAmplitude'], frame_idx)
-                # writer.add_scalar('Rewards/input', info['input'], frame_idx)
+            # if args.env_name == 'VibrationEnv-v0':
+            #     writer.add_scalar('Rewards/NoiseAmplitude', info['NoiseAmplitude'], frame_idx)
+            #     writer.add_scalar('Rewards/VibrationAmplitude', info['VibrationAmplitude'], frame_idx)
+            #     # writer.add_scalar('Rewards/input', info['input'], frame_idx)
 
-                writer.add_scalars('states', {'x1_position':state[0],
-                                                'x2_position':state[1],
-                                                'x3_velocity':state[2],
-                                                'x4_velocity':state[3],
-                                                'x5_Acceleration':state[4],
-                                                'x6_Acceleration':state[5]
-                                                }, frame_idx)
+            #     writer.add_scalars('states', {'x1_position':state[0],
+            #                                     'x2_position':state[1],
+            #                                     'x3_velocity':state[2],
+            #                                     'x4_velocity':state[3],
+            #                                     'x5_Acceleration':state[4],
+            #                                     'x6_Acceleration':state[5]
+            #                                     }, frame_idx)
 
-                writer.add_scalars('states', {'x1_position':state[0],
-                                                'x2_position':state[1] }, frame_idx)
-                writer.add_scalars('states', {'x3_velocity':state[2],
-                                                'x4_velocity':state[3] }, frame_idx)
-                writer.add_scalars('states', {'x5_Acceleration':state[4],
-                                                'x6_Acceleration':state[5] }, frame_idx)        
-                pass  
+            #     writer.add_scalars('states', {'x1_position':state[0],
+            #                                     'x2_position':state[1] }, frame_idx)
+            #     writer.add_scalars('states', {'x3_velocity':state[2],
+            #                                     'x4_velocity':state[3] }, frame_idx)
+            #     writer.add_scalars('states', {'x5_Acceleration':state[4],
+            #                                     'x6_Acceleration':state[5] }, frame_idx)        
+            #     pass  
 
             
             if len(replay_buffer) > batch_size:
@@ -658,12 +649,17 @@ def tarin(sac_trainer, eps, frame_idx):
             # sac_trainer.save_model(model_path, [eps, frame_idx, rewards] )
             pass
 
-        logger.info("the eps is {}, the t is {}, Episode Reward {}, NoiseAmplitude: {}, VibrationAmplitude: {}, input: {}"\
+        logging.info("train: the eps is {}, the t is {}, Episode Reward {}, NoiseAmplitude: {}, VibrationAmplitude: {}, input: {}"\
                 .format(eps, max_steps, episode_reward, info['NoiseAmplitude'], info['VibrationAmplitude'], info['input'] ))
-        
+        # logging.debug('This message should appear on the console')
+        # logging.info('So should this')
+        # logging.warning('And this, too')
         if args.env_name == 'VibrationEnv-v0':
             print("the eps is {}, the t is {}, Episode Reward {}, NoiseAmplitude: {}, VibrationAmplitude: {}, input: {}"\
                 .format(eps, max_steps, episode_reward, info['NoiseAmplitude'], info['VibrationAmplitude'], info['input'] ))           
+            # logger.info("the eps is {}, the t is {}, Episode Reward {}, NoiseAmplitude: {}, VibrationAmplitude: {}, input: {}"\
+            #         .format(eps, max_steps, episode_reward, info['NoiseAmplitude'], info['VibrationAmplitude'], info['input'] ))
+
         else:
             print('Episode: ', eps, '| Episode Reward: ', episode_reward)
 
@@ -681,10 +677,10 @@ def test(sac_trainer):
     # sac_trainer.load_model(model_path)
 
     env_id = 'VibrationEnv-v0'
-    print(env_id)
+    # print(env_id)
     
     for eps in range(1):  #10
-
+        print('test:')
         eval_states = []
         episodes =[]
 
@@ -730,19 +726,19 @@ def test(sac_trainer):
         #         info['BottomLayerForceRate']  \
         #             ))           
 
-        logger.info("the eps is {}, the t is {}, Episode Reward {}, NoiseAmplitude: {}, VibrationAmplitude: {}, input: {}"\
+        logging.info("test: the eps is {}, the t is {}, Episode Reward {}, NoiseAmplitude: {}, VibrationAmplitude: {}, input: {}"\
                 .format(eps, max_steps, episode_reward, info['NoiseAmplitude'], info['VibrationAmplitude'], info['input'] ))
-
+        print(type(episode_reward),episode_reward)
         return episode_reward
 
 
 
 def main(args):
     
-    sac_trainer = SAC_Trainer(replay_buffer, hidden_dim=hidden_dim, action_range=action_range  )
+    sac_trainer = SAC_Trainer(replay_buffer, hidden_dim=hidden_dim, action_range=action_range, args = args  )
     import os
     is_go_on = os.path.exists('./model_save/sac_v2_checkpoint.pth.tar')        
-
+    is_go_on = False
     if is_go_on:  # False 
         sac_trainer.load_model(model_path)
         eps = sac_trainer.epoch
@@ -758,417 +754,49 @@ def main(args):
 
 
     # for epoch in range(1, args['epochs'] + 1):
-    for epoch in range(1, args.epochs + 1):
+    for epoch in range(1, args['epochs'] + 1):
         # train(args, model, device, train_loader, optimizer, epoch)
         # test_acc = test(args, model, device, test_loader)
-        tarin(sac_trainer, eps, frame_idx)
-        test_acc = test(sac_trainer)
+        start, end = np.zeros(2), np.zeros(2)
+        start = time.process_time(), time.perf_counter()
 
+        # tarin(sac_trainer, eps, frame_idx)
+        # test_acc = test(sac_trainer)
+        test_acc = np.array(1) * args['lr']
+        end = time.process_time(), time.perf_counter()
 
-        # if epoch < args['epochs']:
-        if epoch < args.epochs:
+        print('本地时间：{}，第{}次执行时间：{},性能：{}'\
+                    .format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()), epoch, np.array(end) - np.array(start), test_acc))
+        logging.info('本地时间：{}，第{}次执行时间：{},性能：{}'\
+                    .format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()), epoch, np.array(end) - np.array(start), test_acc))
+
+        if epoch < args['epochs']:
+        # if epoch < args.epochs:
             # report intermediate result
             nni.report_intermediate_result(test_acc)
-            logger.debug('test accuracy %g', test_acc)
-            logger.debug('Pipe send intermediate result done.')
+            logging.debug('test accuracy %g', test_acc)
+            logging.debug('Pipe send intermediate result done.')
         else:
             # report final result
             nni.report_final_result(test_acc)
-            logger.debug('Final result is %g', test_acc)
-            logger.debug('Send final result done.')
+            logging.debug('Final result is %g', test_acc)
+            logging.debug('Send final result done.')
 
 
 
 if __name__ == '__main__':
-    main(args)
+    # main(args)
+
+    try:
+        # get parameters form tuner
+        tuner_params = nni.get_next_parameter()
+        logging.debug(tuner_params)
+        params = vars(args)
+        params.update(tuner_params)
+        print(args)
+        # input()
+        main(params)
+    except Exception as exception:
+        logging.exception(exception)
+        raise
 
-    # try:
-    #     # get parameters form tuner
-    #     tuner_params = nni.get_next_parameter()
-    #     logger.debug(tuner_params)
-    #     params = vars(args)
-    #     params.update(tuner_params)
-    #     main(params)
-    # except Exception as exception:
-    #     logger.exception(exception)
-    #     raise
-
-# def main(args):
-
-#     sac_trainer=SAC_Trainer(replay_buffer, hidden_dim=hidden_dim, action_range=action_range  )
-
-
-   
-#     if args.train:
-#         # training loop
-     
-#         for eps in range(max_episodes):
-    
-#             state =  env.reset()
-#             episode_reward = 0
-            
-            
-#             for step in range(max_steps):
-#                 if frame_idx > explore_steps:
-#                     action = sac_trainer.policy_net.get_action(state, deterministic = DETERMINISTIC)
-#                 else:
-#                     action = sac_trainer.policy_net.sample_action()
-
-#                 next_state, reward, done, info = env.step(action)
-#                 # env.render()       
-                    
-#                 replay_buffer.push(state, action, reward, next_state, done)
-                
-#                 state = next_state
-#                 episode_reward += reward
-#                 frame_idx += 1
-
-
-
-#                 writer.add_scalar('Rewards/NoiseAmplitude', info['NoiseAmplitude'], frame_idx)
-#                 writer.add_scalar('Rewards/VibrationAmplitude', info['VibrationAmplitude'], frame_idx)
-#                 writer.add_scalar('Rewards/input', info['input'], frame_idx)
-
-                
-#                 if len(replay_buffer) > batch_size:
-#                     for i in range(update_itr):
-#                         _=sac_trainer.update(batch_size, reward_scale=1e-1, auto_entropy=AUTO_ENTROPY, target_entropy=-1.*action_dim)
-
-#                 if done:
-#                     break
-
-#             if eps % 20 == 0 and eps>0: # plot and model saving interval
-#                 # plot(rewards)
-#                 # epch = [eps, frame_idx]                
-#                 sac_trainer.save_model(model_path, [eps, frame_idx] )
-#             # print('Episode: ', eps, '| Episode Reward: ', episode_reward)
-
-#             print("the eps is {}, the t is {}, Episode Reward {}, NoiseAmplitude: {}, VibrationAmplitude: {}, input: {}"\
-#                 .format(eps, max_steps, episode_reward, info['NoiseAmplitude'], info['VibrationAmplitude'], info['input'] ))           
-#             writer.add_scalar('Rewards/ep_r', episode_reward, global_step=eps)
-
-
-#             rewards.append(episode_reward)
-#         # epch = [eps, frame_idx] 
-#         sac_trainer.save_model(model_path, [eps, frame_idx] )
-
-#     if args.test:
-
-#         # import os
-#         # is_go_on = os.path.exists('./model_save/sac_v2_checkpoint.pth.tar')        
-       
-#         sac_trainer.load_model(model_path)
-
-#         # eps = sac_trainer.epoch
-#         # frame_idx = sac_trainer.frame_idx
-#         # rewards = sac_trainer.rewards
-
-#         env_id = 'VibrationEnv-v0'
-        
-#         for eps in range(10):
-#             # if ENV == 'Reacher':
-#             #     state = env.reset(SCREEN_SHOT)
-#             # elif ENV == 'Pendulum':
-#             #     state =  env.reset()
-#             # episode_reward = 0
-
-#             eval_states = []
-#             episodes =[]
-
-#             eval_BottomLayerForce = []
-#             eval_BottomLayerForceRate = []
-
-#             eval_input = []
-#             eval_action = []
-
-
-#             state =  env.reset()
-#             episode_reward = 0
-#             for step in range(int(0.5*2*max_steps)):   #max_steps
-#                 action = sac_trainer.policy_net.get_action(state, deterministic = DETERMINISTIC)
-#                 # if ENV ==  'Reacher':
-#                 #     next_state, reward, done, _ = env.step(action, SPARSE_REWARD, SCREEN_SHOT)
-#                 # elif ENV ==  'Pendulum':
-#                 #     next_state, reward, done, _ = env.step(action)
-#                 #     env.render()   
-
-
-#                 next_state, reward, done, info = env.step(action)
-#                 # env.render()   
-
-#                 episode_reward += reward
-#                 state=next_state
-
-#                 episodes.append(env.counts)
-#                 eval_states.append(state)
-
-#                 eval_BottomLayerForce.append(info['BottomLayerForce'])
-#                 eval_BottomLayerForceRate.append(info['BottomLayerForceRate'])
-
-#                 eval_input.append(info['input'])
-#                 eval_action.append(action)
-
-#             # print('Episode: ', eps, '| Episode Reward: ', episode_reward)
-
-
-#             print("the eps is {}, the t is {}, Episode Reward {}, NoiseAmplitude: {}, VibrationAmplitude: {}, input: {},\
-#                  BottomLayerForceRate: {}"  \
-#                 .format(eps, max_steps, episode_reward, info['NoiseAmplitude'], info['VibrationAmplitude'], info['input'],\
-#                  info['BottomLayerForceRate']  \
-#                      ))           
-
-#             logger.info("the eps is {}, the t is {}, Episode Reward {}, NoiseAmplitude: {}, VibrationAmplitude: {}, input: {}"\
-#                     .format(eps, max_steps, episode_reward, info['NoiseAmplitude'], info['VibrationAmplitude'], info['input'] ))
-
-           
-#             episodes = np.array(episodes)
-#             eval_states = np.array(eval_states)
-
-#             eval_BottomLayerForce = np.array(eval_BottomLayerForce)
-#             eval_BottomLayerForceRate = np.array(eval_BottomLayerForceRate)
-
-#             eval_input = np.array(eval_input)
-
-#             # import pandas as pd
-#             # names =  [r'x1(t)', r'x2(t)', r'x1c(t)', r'x2c(t)', r'x1cc(t)', r'x2cc(t)', r'基座受力', r'基座受力比率', r'作动力', r'激励力']
-#             # data_temp = np.column_stack((eval_states, eval_BottomLayerForce, eval_BottomLayerForceRate, eval_input))
-#             # DataSet = list(data_temp)
-#             # # DataSet = list(zip(episodes,eval_states))
-#             # dataframe = pd.DataFrame(data = DataSet )
-#             # dataframe.columns = names
-#             # dataframe.to_csv("data.csv", encoding = 'utf_8_sig',index=False,sep=',')
-            
-#             # data = pd.read_csv('data.csv')
-#             # print(data.head())
-
-
-
-#             # from matplotlib import pylab
-#             # plt = pylab
-#             fig = plt.figure("VibrationEnv-states")
-#             plt.subplot(221)
-#             # legends = [r'$x_1(t)$', r'$x_2(t)$', r'$x_3(t)$', r'$x_4(t)$', r'$x1cc(t)$', r'$x2cc(t)$']
-#             legends = [r'$x_1(t)$', r'$x_2(t)$', r'$x_3(t)$', r'$x_4(t)$', r'$x_5(t)$', r'$x_6(t)$']
-#             # fig = plt.figure("VibrationEnv-states")
-#             # plt.plot(episodes, eval_states[:,:2])
-#             plt.plot(episodes, eval_states[:,:6])
-#             plt.title("%s"%env_id)
-#             plt.xlabel("Episode")
-#             plt.ylabel("eval_states")
-#             plt.legend(legends)
-#             # plt.show()
-#             plt.grid()
-
-#             plt.subplot(222)
-#             legends = [r'$x_1(t)$', r'$x_2(t)$']
-#             # fig = plt.figure("VibrationEnv-states")
-#             # plt.plot(episodes, eval_states[:,:2])
-#             plt.plot(episodes, eval_states[:,:2])
-#             plt.title("%s"%env_id)
-#             plt.xlabel("Episode")
-#             plt.ylabel("eval_states")
-#             plt.legend(legends)
-#             # plt.show()
-#             plt.grid()
-
-#             plt.subplot(223)
-#             legends = [r'$x_3(t)$', r'$x_4(t)$']
-#             # fig = plt.figure("VibrationEnv-states")
-#             # plt.plot(episodes, eval_states[:,:2])
-#             plt.plot(episodes, eval_states[:,2:4])
-#             plt.title("%s"%env_id)
-#             plt.xlabel("Episode")
-#             plt.ylabel("eval_states")
-#             plt.legend(legends)
-#             # plt.show()
-#             plt.grid()
-
-
-#             plt.subplot(224)
-#             legends = [r'$x_5(t)$', r'$x_6(t)$']
-#             # fig = plt.figure("VibrationEnv-states")
-#             # plt.plot(episodes, eval_states[:,:2])
-#             plt.plot(episodes, eval_states[:,4:6])
-#             plt.title("%s"%env_id)
-#             plt.xlabel("Episode")
-#             plt.ylabel("eval_states")
-#             plt.legend(legends)
-
-#             plt.grid()
-#             # plt.savefig('predict%d.pdf'%i)
-#             # plt.savefig('./output/predict{}.pdf'.format(eps+1))
-#             # plt.close()
-#             # # pylab.get_current_fig_manager().window.showMaximized()
-#             # pylab.get_current_fig_manager().showMaximized()
-#             # # pylab.get_current_fig_manager
-
-#             wm = plt.get_current_fig_manager()
-#             wm.window.state('zoomed')
-#             # plt.show()
-
-#             # plt.savefig('./output/predict{}.pdf'.format(eps+1))
-#             # plt.close()
-
-#             plt.show()
-
-
-#             fig = plt.figure("VibrationEnv-states")
-#             plt.subplot(121)
-#             legends = [r'$x_7(t)$']
-#             plt.plot(episodes, eval_BottomLayerForce)
-#             # plt.plot(episodes, eval_BottomLayerForceRate)
-#             plt.title("%s"%env_id)
-#             plt.xlabel("Episode")
-#             plt.ylabel("eval_states")
-#             plt.legend(legends)
-#             plt.grid()
-
-#             plt.subplot(122)
-#             legends = [r'$x_8(t)$']
-#             # plt.plot(episodes, eval_BottomLayerForce)
-#             plt.plot(episodes, eval_BottomLayerForceRate)
-#             plt.title("%s"%env_id)
-#             plt.xlabel("Episode")
-#             plt.ylabel("eval_states")
-#             plt.legend(legends)
-#             plt.grid()
-
-#             wm = plt.get_current_fig_manager()
-#             wm.window.state('zoomed')
-
-#             plt.show()
-
-
-#             fig = plt.figure("VibrationEnv-input")
-#             # plt.subplot(121)
-#             legends = [r'$u(t)$', r'$f(t)$', r'$x_8(t)$']
-#             plt.plot(episodes, eval_input)
-#             # plt.plot(episodes, eval_BottomLayerForceRate)
-#             plt.title("%s"%env_id)
-#             plt.xlabel("Episode")
-#             plt.ylabel("input")
-#             plt.legend(legends)
-#             plt.grid()
-
-#             wm = plt.get_current_fig_manager()
-#             wm.window.state('zoomed')
-
-#             plt.show()
-
-        
-#         env.close()
-#         return episode_reward
-
-
-#     if args.go_on_train:
-        
-#         import os
-#         is_go_on = os.path.exists('./model_save/sac_v2_checkpoint.pth.tar')        
-
-#         if is_go_on:  # False 
-#             sac_trainer.load_model(model_path)
-#             eps = sac_trainer.epoch
-#             frame_idx = sac_trainer.frame_idx
-#             rewards = sac_trainer.rewards
-#         else: 
-#             eps = 0
-#             frame_idx = 0
-
-#         # print(eps,frame_idx)
-#         print('eps: {}, frame_idx:{}'.format(eps,frame_idx))
-#         # input()
-#         # for eps in range(max_episodes):     
-
-#         while eps <= max_episodes:
-            
-#             state =  env.reset()
-#             episode_reward = 0
-            
-            
-#             for step in range(max_steps):
-#                 if frame_idx > explore_steps:
-#                     action = sac_trainer.policy_net.get_action(state, deterministic = DETERMINISTIC)
-#                 else:
-#                     action = sac_trainer.policy_net.sample_action()
-
-#                 next_state, reward, done, info = env.step(action)
-#                 # env.render()       
-                    
-#                 replay_buffer.push(state, action, reward, next_state, done)
-                
-#                 state = next_state
-#                 episode_reward += reward
-#                 frame_idx += 1
-
-
-#                 if args.env_name == 'VibrationEnv-v0':
-#                     writer.add_scalar('Rewards/NoiseAmplitude', info['NoiseAmplitude'], frame_idx)
-#                     writer.add_scalar('Rewards/VibrationAmplitude', info['VibrationAmplitude'], frame_idx)
-#                     writer.add_scalar('Rewards/input', info['input'], frame_idx)
-
-#                     writer.add_scalars('states', {'x1_position':state[0],
-#                                                   'x2_position':state[1],
-#                                                   'x3_velocity':state[2],
-#                                                   'x4_velocity':state[3],
-#                                                   'x5_Acceleration':state[4],
-#                                                   'x6_Acceleration':state[5]
-#                                                   }, frame_idx)
-
-#                     writer.add_scalars('states', {'x1_position':state[0],
-#                                                   'x2_position':state[1] }, frame_idx)
-#                     writer.add_scalars('states', {'x3_velocity':state[2],
-#                                                   'x4_velocity':state[3] }, frame_idx)
-#                     writer.add_scalars('states', {'x5_Acceleration':state[4],
-#                                                   'x6_Acceleration':state[5] }, frame_idx)        
-#                     pass  
-
-                
-#                 if len(replay_buffer) > batch_size:
-#                     for i in range(update_itr):
-#                         _=sac_trainer.update(batch_size, reward_scale=1e-1, auto_entropy=AUTO_ENTROPY, target_entropy=-1.*action_dim)
-
-#                 if done:
-#                     break
-
-#             if eps % 5 == 0 and eps>0: # plot and model saving interval
-#                 # plot(rewards)
-#                 # model_path = './model_save/sac_v2_eps_{}_'.format(eps)
-#                 sac_trainer.save_model(model_path, [eps, frame_idx, rewards] )
-
-#             logger.info("the eps is {}, the t is {}, Episode Reward {}, NoiseAmplitude: {}, VibrationAmplitude: {}, input: {}"\
-#                     .format(eps, max_steps, episode_reward, info['NoiseAmplitude'], info['VibrationAmplitude'], info['input'] ))
-            
-#             if args.env_name == 'VibrationEnv-v0':
-#                 print("the eps is {}, the t is {}, Episode Reward {}, NoiseAmplitude: {}, VibrationAmplitude: {}, input: {}"\
-#                     .format(eps, max_steps, episode_reward, info['NoiseAmplitude'], info['VibrationAmplitude'], info['input'] ))           
-#             else:
-#                 print('Episode: ', eps, '| Episode Reward: ', episode_reward)
-
-#             writer.add_scalar('Rewards/ep_r', episode_reward, global_step=eps)
-
-#             rewards.append(episode_reward)
-
-#             eps += 1
-
-#         sac_trainer.save_model(model_path, [eps, frame_idx] )
-  
-
-
-# if __name__ == '__main__':
-#     # main(args)
-#     import nni
-#     import logging
-#     logger = logging.getLogger('vibration-example')
-    
-
-
-#     try:
-#         # get parameters form tuner
-#         tuner_params = nni.get_next_parameter()
-#         logger.debug(tuner_params)
-#         params = vars(get_params())
-#         params.update(tuner_params)
-#         main(params)
-#     except Exception as exception:
-#         logger.exception(exception)
-#         raise
