@@ -51,7 +51,7 @@ import nni
 # else:
 #     device = torch.device("cpu")
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
-device = 'cpu'
+# device = 'cpu'
 print(device)
     # use_cuda = not args['no_cuda'] and torch.cuda.is_available()
 
@@ -90,6 +90,8 @@ parser.add_argument('--lr', type=float, default=3e-4,
 #                     help='optimizer to use (default: Adam)')
 parser.add_argument('--nhid', type=int, default=256,
                     help='number of hidden units per layer (default: 256)')
+
+
 
 # args = parser.parse_args()
 args, _ = parser.parse_known_args()
@@ -245,7 +247,7 @@ state_seq_len = 1
 dropout = 0
 
 class PolicyNetwork(nn.Module):
-    def __init__(self, num_inputs, num_actions, hidden_size, action_range=1., init_w=3e-3, log_std_min=-20, log_std_max=2):
+    def __init__(self, args, num_inputs, num_actions, hidden_size, action_range=1., init_w=3e-3, log_std_min=-20, log_std_max=2):
         super(PolicyNetwork, self).__init__()
 
 
@@ -265,7 +267,7 @@ class PolicyNetwork(nn.Module):
         # self.hidden_dim = hidden_size  
       
         # self.bn1 = nn.BatchNorm1d(state_dim)
-        self.tcn = TemporalConvNet(input_channels, [args.nhid]*args.levels, kernel_size=kernel_size, dropout=args.dropout)
+        self.tcn = TemporalConvNet(input_channels, [args['nhid']]*args['levels'], kernel_size=kernel_size, dropout=args['dropout'])
         # self.fc1 = nn.Linear(num_channels[-1], hidden_size)
 
 
@@ -364,7 +366,7 @@ class SAC_Trainer():
         self.soft_q_net2 = SoftQNetwork(state_dim, action_dim, hidden_dim).to(device)
         self.target_soft_q_net1 = SoftQNetwork(state_dim, action_dim, hidden_dim).to(device)
         self.target_soft_q_net2 = SoftQNetwork(state_dim, action_dim, hidden_dim).to(device)
-        self.policy_net = PolicyNetwork(state_dim, action_dim, hidden_dim, action_range).to(device)        
+        self.policy_net = PolicyNetwork(args, state_dim, action_dim, hidden_dim, action_range).to(device)        
         self.log_alpha = torch.zeros(1, dtype=torch.float32, requires_grad=True, device=device)
         print('Soft Q Network (1,2): ', self.soft_q_net1)
         print('Policy Network: ', self.policy_net)
@@ -590,7 +592,7 @@ def tarin(sac_trainer, eps, frame_idx):
     # print('eps: {}, frame_idx:{}'.format(eps,frame_idx))
     # input()
     # for eps in range(max_episodes):     
-
+    last_episode_reward = 0
     while eps <= max_episodes:
         print('train:')
 
@@ -647,13 +649,16 @@ def tarin(sac_trainer, eps, frame_idx):
             # plot(rewards)
             # model_path = './model_save/sac_v2_eps_{}_'.format(eps)
             # sac_trainer.save_model(model_path, [eps, frame_idx, rewards] )
+            if episode_reward > last_episode_reward:
+                print('save_model')
+                # sac_trainer.save_model(model_path, [eps, frame_idx, rewards] )
+                last_episode_reward = episode_reward
+
             pass
 
         logging.info("train: the eps is {}, the t is {}, Episode Reward {}, NoiseAmplitude: {}, VibrationAmplitude: {}, input: {}"\
                 .format(eps, max_steps, episode_reward, info['NoiseAmplitude'], info['VibrationAmplitude'], info['input'] ))
-        # logging.debug('This message should appear on the console')
-        # logging.info('So should this')
-        # logging.warning('And this, too')
+
         if args.env_name == 'VibrationEnv-v0':
             print("the eps is {}, the t is {}, Episode Reward {}, NoiseAmplitude: {}, VibrationAmplitude: {}, input: {}"\
                 .format(eps, max_steps, episode_reward, info['NoiseAmplitude'], info['VibrationAmplitude'], info['input'] ))           
@@ -663,7 +668,7 @@ def tarin(sac_trainer, eps, frame_idx):
         else:
             print('Episode: ', eps, '| Episode Reward: ', episode_reward)
 
-        writer.add_scalar('Rewards/ep_r', episode_reward, global_step=eps)
+        # writer.add_scalar('Rewards/ep_r', episode_reward, global_step=eps)
 
         rewards.append(episode_reward)
 
@@ -693,43 +698,45 @@ def test(sac_trainer):
 
         state =  env.reset()
         episode_reward = 0
-        for step in range(int(0.5*2*max_steps)):   #max_steps
-            action = sac_trainer.policy_net.get_action(state, deterministic = DETERMINISTIC)
-            # if ENV ==  'Reacher':
-            #     next_state, reward, done, _ = env.step(action, SPARSE_REWARD, SCREEN_SHOT)
-            # elif ENV ==  'Pendulum':
-            #     next_state, reward, done, _ = env.step(action)
-            #     env.render()   
+        with torch.no_grad():
+            for step in range(int(0.5*2*max_steps)):   #max_steps
+                action = sac_trainer.policy_net.get_action(state, deterministic = DETERMINISTIC)
+                # if ENV ==  'Reacher':
+                #     next_state, reward, done, _ = env.step(action, SPARSE_REWARD, SCREEN_SHOT)
+                # elif ENV ==  'Pendulum':
+                #     next_state, reward, done, _ = env.step(action)
+                #     env.render()   
 
 
-            next_state, reward, done, info = env.step(action)
-            # env.render()   
+                next_state, reward, done, info = env.step(action)
+                # env.render()   
 
-            episode_reward += reward
-            state=next_state
+                episode_reward += reward
+                state=next_state
 
-            episodes.append(env.counts)
-            eval_states.append(state)
+                episodes.append(env.counts)
+                eval_states.append(state)
 
-            eval_BottomLayerForce.append(info['BottomLayerForce'])
-            eval_BottomLayerForceRate.append(info['BottomLayerForceRate'])
+                eval_BottomLayerForce.append(info['BottomLayerForce'])
+                eval_BottomLayerForceRate.append(info['BottomLayerForceRate'])
 
-            eval_input.append(info['input'])
-            eval_action.append(action)
+                eval_input.append(info['input'])
+                eval_action.append(action)
 
-        # print('Episode: ', eps, '| Episode Reward: ', episode_reward)
+            # print('Episode: ', eps, '| Episode Reward: ', episode_reward)
 
 
-        # print("the eps is {}, the t is {}, Episode Reward {}, NoiseAmplitude: {}, VibrationAmplitude: {}, input: {},\
-        #         BottomLayerForceRate: {}"  \
-        #     .format(eps, max_steps, episode_reward, info['NoiseAmplitude'], info['VibrationAmplitude'], info['input'],\
-        #         info['BottomLayerForceRate']  \
-        #             ))           
+            # print("the eps is {}, the t is {}, Episode Reward {}, NoiseAmplitude: {}, VibrationAmplitude: {}, input: {},\
+            #         BottomLayerForceRate: {}"  \
+            #     .format(eps, max_steps, episode_reward, info['NoiseAmplitude'], info['VibrationAmplitude'], info['input'],\
+            #         info['BottomLayerForceRate']  \
+            #             ))           
 
-        logging.info("test: the eps is {}, the t is {}, Episode Reward {}, NoiseAmplitude: {}, VibrationAmplitude: {}, input: {}"\
-                .format(eps, max_steps, episode_reward, info['NoiseAmplitude'], info['VibrationAmplitude'], info['input'] ))
-        print(type(episode_reward),episode_reward)
-        return episode_reward
+            logging.info("test: the eps is {}, the t is {}, Episode Reward {}, NoiseAmplitude: {}, VibrationAmplitude: {}, input: {}"\
+                    .format(eps, max_steps, episode_reward, info['NoiseAmplitude'], info['VibrationAmplitude'], info['input'] ))
+            print(type(episode_reward),episode_reward)
+
+            return episode_reward
 
 
 
@@ -760,9 +767,9 @@ def main(args):
         start, end = np.zeros(2), np.zeros(2)
         start = time.process_time(), time.perf_counter()
 
-        # tarin(sac_trainer, eps, frame_idx)
-        # test_acc = test(sac_trainer)
-        test_acc = np.array(1) * args['lr']
+        tarin(sac_trainer, eps, frame_idx)
+        test_acc = test(sac_trainer)
+        # test_acc = np.array(1) * args['lr'] * args['nhid']
         end = time.process_time(), time.perf_counter()
 
         print('本地时间：{}，第{}次执行时间：{},性能：{}'\
