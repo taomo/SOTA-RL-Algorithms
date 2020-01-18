@@ -651,8 +651,8 @@ def tarin(sac_trainer, eps, frame_idx):
             # sac_trainer.save_model(model_path, [eps, frame_idx, rewards] )
             pass
 
-        if episode_reward > max(rewards):
-            print('save_model')
+        # if episode_reward > max(rewards):
+        #     print('save_model')
             # sac_trainer.save_model(model_path, [eps, frame_idx, rewards] )
         
 
