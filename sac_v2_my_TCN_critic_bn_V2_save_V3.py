@@ -575,7 +575,7 @@ tensorboard_path = './model_save/'
 from torch.utils.tensorboard import SummaryWriter
 writer = SummaryWriter(tensorboard_path)
 
-def tarin(sac_trainer, eps, frame_idx):
+def tarin(sac_trainer, eps, frame_idx, rewards):
     # import os
     # is_go_on = os.path.exists('./model_save/sac_v2_checkpoint.pth.tar')        
 
@@ -592,7 +592,7 @@ def tarin(sac_trainer, eps, frame_idx):
     # print('eps: {}, frame_idx:{}'.format(eps,frame_idx))
     # input()
     # for eps in range(max_episodes):     
-    last_episode_reward = 0
+    
     while eps <= max_episodes:
         print('train:')
 
@@ -649,12 +649,12 @@ def tarin(sac_trainer, eps, frame_idx):
             # plot(rewards)
             # model_path = './model_save/sac_v2_eps_{}_'.format(eps)
             # sac_trainer.save_model(model_path, [eps, frame_idx, rewards] )
-            if episode_reward > last_episode_reward:
-                print('save_model')
-                # sac_trainer.save_model(model_path, [eps, frame_idx, rewards] )
-                last_episode_reward = episode_reward
-
             pass
+
+        if episode_reward > max(rewards):
+            print('save_model')
+            # sac_trainer.save_model(model_path, [eps, frame_idx, rewards] )
+        
 
         logging.info("train: the eps is {}, the t is {}, Episode Reward {}, NoiseAmplitude: {}, VibrationAmplitude: {}, input: {}"\
                 .format(eps, max_steps, episode_reward, info['NoiseAmplitude'], info['VibrationAmplitude'], info['input'] ))
@@ -677,6 +677,7 @@ def tarin(sac_trainer, eps, frame_idx):
     # sac_trainer.save_model(model_path, [eps, frame_idx] )
 
     # return rewards.mean()
+    return frame_idx
 
 def test(sac_trainer):    
     # sac_trainer.load_model(model_path)
@@ -744,8 +745,9 @@ def main(args):
     
     sac_trainer = SAC_Trainer(replay_buffer, hidden_dim=hidden_dim, action_range=action_range, args = args  )
     import os
-    is_go_on = os.path.exists('./model_save/sac_v2_checkpoint.pth.tar')        
-    is_go_on = False
+    is_go_on = os.path.exists('./model_save/sac_v2_checkpoint.pth.tar')     
+    print('###', is_go_on)   
+    # is_go_on = False
     if is_go_on:  # False 
         sac_trainer.load_model(model_path)
         eps = sac_trainer.epoch
@@ -754,6 +756,7 @@ def main(args):
     else: 
         eps = 0
         frame_idx = 0
+    eps = 0       
 
     # print(eps,frame_idx)
     print('eps: {}, frame_idx:{}'.format(eps,frame_idx))
@@ -767,7 +770,8 @@ def main(args):
         start, end = np.zeros(2), np.zeros(2)
         start = time.process_time(), time.perf_counter()
 
-        tarin(sac_trainer, eps, frame_idx)
+        frame_idx = tarin(sac_trainer, eps, frame_idx, rewards)
+        print('&&&',frame_idx)
         test_acc = test(sac_trainer)
         # test_acc = np.array(1) * args['lr'] * args['nhid']
         end = time.process_time(), time.perf_counter()
