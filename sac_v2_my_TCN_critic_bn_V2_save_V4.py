@@ -771,7 +771,7 @@ def main(args):
         start = time.process_time(), time.perf_counter()
 
         frame_idx = tarin(sac_trainer, eps, frame_idx)
-        # print('&&&',frame_idx)
+        print('&&&',frame_idx)
         test_acc = test(sac_trainer)
         # test_acc = np.array(1) * args['lr'] * args['nhid']
         end = time.process_time(), time.perf_counter()
