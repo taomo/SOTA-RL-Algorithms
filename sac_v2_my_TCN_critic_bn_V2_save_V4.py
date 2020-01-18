@@ -677,7 +677,7 @@ def tarin(sac_trainer, eps, frame_idx):
     # sac_trainer.save_model(model_path, [eps, frame_idx] )
 
     # return rewards.mean()
-    # return frame_idx
+    return frame_idx
 
 def test(sac_trainer):    
     # sac_trainer.load_model(model_path)
@@ -770,8 +770,8 @@ def main(args):
         start, end = np.zeros(2), np.zeros(2)
         start = time.process_time(), time.perf_counter()
 
-        tarin(sac_trainer, eps, frame_idx)
-        print('&&&',frame_idx)
+        frame_idx = tarin(sac_trainer, eps, frame_idx)
+        # print('&&&',frame_idx)
         test_acc = test(sac_trainer)
         # test_acc = np.array(1) * args['lr'] * args['nhid']
         end = time.process_time(), time.perf_counter()
