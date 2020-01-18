@@ -555,7 +555,7 @@ replay_buffer = ReplayBuffer(replay_buffer_size)
 action_range=1.
 
 # hyper-parameters for RL training
-max_episodes  = 10  # 5000
+max_episodes  = 0  # 5000
 # max_steps   = 20 if ENV ==  'Reacher' else 150  # Pendulum needs 150 steps per episode to learn well, cannot handle 20
 max_steps = 500
 frame_idx   = 0
