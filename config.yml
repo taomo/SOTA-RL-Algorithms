@@ -1,8 +1,8 @@
 authorName: default
-experimentName: example_mnist_pytorch
+experimentName: sac_vibration
 trialConcurrency: 1
-maxExecDuration: 1h
-maxTrialNum: 10
+maxExecDuration: 1000h
+maxTrialNum: 1000
 #choice: local, remote, pai
 trainingServicePlatform: local
 searchSpacePath: search_space.json
@@ -16,6 +16,6 @@ tuner:
     #choice: maximize, minimize
     optimize_mode: maximize
 trial:
-  command: python sac_v2_my_TCN_critic_bn_V2_save_V3.py
+  command: python3 sac_v2_my_TCN_critic_bn_V2_save_V4.py
   codeDir: .
   gpuNum: 1
