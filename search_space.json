@@ -1,0 +1,6 @@
+{
+    "lr":{"_type":"uniform","_value":[1e-5, 1e-3]},
+    "nhid":{"_type":"choice","_value":[128, 256, 512]},
+    "levels":{"_type":"choice","_value":[2, 4, 6, 8]},
+    "dropout":{"_type":"uniform","_value":[0, 0.9]}
+}
