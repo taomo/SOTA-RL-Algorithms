@@ -677,7 +677,7 @@ def tarin(sac_trainer, eps, frame_idx):
     # sac_trainer.save_model(model_path, [eps, frame_idx] )
 
     # return rewards.mean()
-    return frame_idx
+    return frame_idx, episode_reward
 
 def test(sac_trainer):    
     # sac_trainer.load_model(model_path)
@@ -699,8 +699,11 @@ def test(sac_trainer):
 
         state =  env.reset()
         episode_reward = 0
+        episode_BottomLayerForce = 0
+        episode_BottomLayerForceRate = 0
+
         with torch.no_grad():
-            for step in range(int(0.5*2*max_steps)):   #max_steps
+            for step in range(int(0.2*2*max_steps)):   #max_steps  0.5 调整为0.2,减少测试时间
                 action = sac_trainer.policy_net.get_action(state, deterministic = DETERMINISTIC)
                 # if ENV ==  'Reacher':
                 #     next_state, reward, done, _ = env.step(action, SPARSE_REWARD, SCREEN_SHOT)
@@ -715,6 +718,10 @@ def test(sac_trainer):
                 episode_reward += reward
                 state=next_state
 
+
+                episode_BottomLayerForce += info['BottomLayerForce']
+                episode_BottomLayerForceRate += info['BottomLayerForceRate']
+                
                 episodes.append(env.counts)
                 eval_states.append(state)
 
@@ -770,10 +777,11 @@ def main(args):
         start, end = np.zeros(2), np.zeros(2)
         start = time.process_time(), time.perf_counter()
 
-        frame_idx = tarin(sac_trainer, eps, frame_idx)
-        print('&&&',frame_idx)
-        test_acc = test(sac_trainer)
-        # test_acc = np.array(1) * args['lr'] * args['nhid']
+        frame_idx, episode_reward = tarin(sac_trainer, eps, frame_idx)
+        print('&&&',frame_idx, episode_reward)
+        test_acc = episode_reward
+        # test_acc = test(sac_trainer)
+
         end = time.process_time(), time.perf_counter()
 
         print('本地时间：{}，第{}次执行时间：{},性能：{}'\
